@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
+  const [name, setName] = useState('');
+  const [age, setAge] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,7 +32,23 @@ export default function AuthPage() {
         }
       } else {
         // Sign up
-        const { error } = await signUp(email, password);
+        const parsedAge = Number.parseInt(age, 10);
+        if (!name.trim()) {
+          setMessage('Error: Please enter your name.');
+          setLoading(false);
+          return;
+        }
+        if (!Number.isFinite(parsedAge) || parsedAge <= 0) {
+          setMessage('Error: Please enter a valid age.');
+          setLoading(false);
+          return;
+        }
+        const { error } = await signUp({
+          name: name.trim(),
+          age: parsedAge,
+          email,
+          password,
+        });
         if (error) {
           setMessage(`Error: ${error.message}`);
         } else {
@@ -80,6 +98,35 @@ export default function AuthPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {!isLogin && (
+            <>
+              <div>
+                <label className="text-white text-sm font-medium mb-2 block">Name</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your full name"
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  required={!isLogin}
+                />
+              </div>
+
+              <div>
+                <label className="text-white text-sm font-medium mb-2 block">Age</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
+                  placeholder="Your age"
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  required={!isLogin}
+                />
+              </div>
+            </>
+          )}
+
           <div>
             <label className="text-white text-sm font-medium mb-2 block">Email</label>
             <input

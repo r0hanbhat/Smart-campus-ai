@@ -1,8 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #160f24;
+  --foreground: #f5f0ff;
+  --surface: rgba(19, 13, 33, 0.68);
+  --surface-strong: rgba(23, 16, 39, 0.82);
+  --surface-soft: rgba(255, 255, 255, 0.06);
+  --line: rgba(255, 255, 255, 0.12);
+  --line-strong: rgba(255, 255, 255, 0.22);
+  --glow-a: rgba(103, 232, 249, 0.28);
+  --glow-b: rgba(244, 114, 182, 0.2);
+  --glow-c: rgba(196, 181, 253, 0.24);
 }
 
 @theme inline {
@@ -12,15 +20,177 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(circle at 15% 20%, rgba(34, 211, 238, 0.22), transparent 28%),
+    radial-gradient(circle at 85% 15%, rgba(244, 114, 182, 0.16), transparent 24%),
+    radial-gradient(circle at 75% 78%, rgba(192, 132, 252, 0.18), transparent 22%),
+    linear-gradient(145deg, #140d21 0%, #241448 45%, #4d135f 100%);
+  background-attachment: fixed;
+  letter-spacing: 0.01em;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.42;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(circle at center, black 35%, transparent 92%);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: "Palatino Linotype", Georgia, serif;
+  letter-spacing: 0.015em;
+}
+
+::selection {
+  background: rgba(103, 232, 249, 0.3);
+  color: white;
+}
+
+.campus-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.campus-shell::before,
+.campus-shell::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  border-radius: 9999px;
+  filter: blur(70px);
+  pointer-events: none;
+}
+
+.campus-shell::before {
+  top: 6rem;
+  left: -6rem;
+  width: 18rem;
+  height: 18rem;
+  background: var(--glow-a);
+}
+
+.campus-shell::after {
+  right: -5rem;
+  bottom: 10rem;
+  width: 20rem;
+  height: 20rem;
+  background: var(--glow-b);
+}
+
+.campus-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
+    var(--surface);
+  border: 1px solid var(--line);
+  box-shadow:
+    0 24px 60px rgba(5, 1, 15, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(22px);
+}
+
+.campus-panel-strong {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
+    var(--surface-strong);
+  border: 1px solid var(--line-strong);
+  box-shadow:
+    0 28px 80px rgba(7, 2, 18, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(24px);
+}
+
+.campus-soft-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.campus-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.campus-kicker {
+  color: rgba(196, 181, 253, 0.88);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+}
+
+.campus-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.55rem 0.95rem;
+  color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+}
+
+.campus-input {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.campus-input:focus {
+  outline: none;
+  border-color: rgba(103, 232, 249, 0.5);
+  box-shadow:
+    0 0 0 3px rgba(103, 232, 249, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.campus-button {
+  background-image: linear-gradient(135deg, #22d3ee 0%, #a855f7 52%, #ec4899 100%);
+  box-shadow:
+    0 12px 28px rgba(126, 34, 206, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.campus-button:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.campus-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.campus-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 9999px;
+}
+
+.campus-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }

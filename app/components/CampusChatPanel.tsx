@@ -2,82 +2,38 @@
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-
-type Profile = {
-  user_id: string;
-  username: string;
-  display_name: string;
-  is_online: boolean;
-  last_seen: string;
-};
-
-type FriendRequest = {
-  id: string;
-  sender_id: string;
-  receiver_id: string;
-  status: 'pending' | 'accepted' | 'rejected';
-  created_at: string;
-};
-
-type Friendship = {
-  user_id: string;
-  friend_id: string;
-};
-
-type Conversation = {
-  id: string;
-  type: 'global' | 'direct' | 'group';
-  name: string | null;
-  slug: string | null;
-  direct_pair_key: string | null;
-  created_by: string | null;
-  created_at: string;
-};
-
-type ConversationMember = {
-  conversation_id: string;
-  user_id: string;
-};
-
-type Message = {
-  id: string;
-  conversation_id: string;
-  sender_id: string;
-  content: string;
-  created_at: string;
-};
-
-type NotificationItem = {
-  id: string;
-  user_id: string;
-  type: 'friend_request' | 'friend_accept' | 'group_invite';
-  title: string;
-  body: string;
-  payload: Record<string, string>;
-  is_read: boolean;
-  created_at: string;
-};
-
-type SupabaseErrorLike = {
-  code?: string;
-  message: string;
-};
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import {
+  CampusChatSidebar,
+  ChatViewPanel,
+  FriendsViewPanel,
+  NotificationsViewPanel,
+  RequestsViewPanel,
+} from './campus-chat/panels';
+import {
+  buildFallbackUsername,
+  getFriendId,
+  getProfileHeading,
+  getProfileSubheading,
+  type ActiveChatView,
+  isDuplicateKeyError,
+  isNoRowsError,
+  normalizeUsernameSearch,
+  sortMessagesByCreatedAt,
+  upsertByKey,
+  type Conversation,
+  type ConversationMember,
+  type FriendRequest,
+  type Friendship,
+  type Message,
+  type NotificationItem,
+  type Profile,
+} from './campus-chat/shared';
 
 type CampusChatPanelProps = {
   userId: string;
   userEmail: string;
 };
-
-const POLL_INTERVAL_MS = 5000;
-
-function buildFallbackUsername(email: string, userId: string) {
-  const base = email.split('@')[0]?.toLowerCase().replace(/[^a-z0-9_]/g, '') || 'student';
-  return `${base}-${userId.slice(0, 4)}`;
-}
-
-function isDuplicateKeyError(error: SupabaseErrorLike | null) {
-  return error?.code === '23505';
-}
 
 export default function CampusChatPanel({ userId, userEmail }: CampusChatPanelProps) {
   const [supabase] = useState(() => createClient());
@@ -89,16 +45,28 @@ export default function CampusChatPanel({ userId, userEmail }: CampusChatPanelPr
   const [conversationMembers, setConversationMembers] = useState<ConversationMember[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'chat' | 'friends' | 'requests' | 'notifications'>('chat');
+  const [activeView, setActiveView] = useState<ActiveChatView>('chat');
   const [searchTerm, setSearchTerm] = useState('');
   const [newMessage, setNewMessage] = useState('');
   const [groupName, setGroupName] = useState('');
+  const [groupMemberUsername, setGroupMemberUsername] = useState('');
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [selectedFriendIds, setSelectedFriendIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isCreatingGroupChat, setIsCreatingGroupChat] = useState(false);
+  const [isAddingGroupMember, setIsAddingGroupMember] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [isLeavingGroup, setIsLeavingGroup] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
+  const [hiddenConversationIds, setHiddenConversationIds] = useState<string[]>([]);
+  const [hasLoadedHiddenConversationIds, setHasLoadedHiddenConversationIds] = useState(false);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const selectedConversationIdRef = useRef<string | null>(null);
+  const conversationIdsRef = useRef<string[]>([]);
+  const refreshRequestIdRef = useRef(0);
+  const groupCreationInFlightRef = useRef(false);
+  const hiddenConversationStorageKey = `campus-chat-hidden-conversations:${userId}`;
 
   const profileMap = useMemo(
     () => new Map(profiles.map((profile) => [profile.user_id, profile])),
@@ -106,8 +74,21 @@ export default function CampusChatPanel({ userId, userEmail }: CampusChatPanelPr
   );
 
   const friendIds = useMemo(
-    () => friendships.filter((entry) => entry.user_id === userId).map((entry) => entry.friend_id),
-    [friendships, userId]
+    () =>
+      Array.from(
+        new Set(
+          [
+            ...friendships
+              .map((entry) => getFriendId(entry, userId))
+              .filter((friendId): friendId is string => Boolean(friendId)),
+            ...friendRequests
+              .filter((request) => request.status === 'accepted')
+              .map((request) => (request.sender_id === userId ? request.receiver_id : request.sender_id))
+              .filter((friendId) => friendId !== userId),
+          ]
+        )
+      ),
+    [friendRequests, friendships, userId]
   );
 
   const receivedRequests = useMemo(
@@ -126,7 +107,7 @@ export default function CampusChatPanel({ userId, userEmail }: CampusChatPanelPr
   );
 
   const searchableProfiles = useMemo(() => {
-    const lowered = searchTerm.trim().toLowerCase();
+    const lowered = normalizeUsernameSearch(searchTerm);
     return profiles.filter((profile) => {
       if (profile.user_id === userId) return false;
       if (friendIds.includes(profile.user_id)) return false;
@@ -136,20 +117,55 @@ export default function CampusChatPanel({ userId, userEmail }: CampusChatPanelPr
     });
   }, [friendIds, profiles, searchTerm, sentRequests, userId]);
 
+  const filteredFriends = useMemo(() => {
+    const lowered = normalizeUsernameSearch(searchTerm);
+    if (!lowered) return availableFriends;
+
+    return availableFriends.filter((friend) =>
+      friend.username.toLowerCase().includes(lowered) || friend.display_name.toLowerCase().includes(lowered)
+    );
+  }, [availableFriends, searchTerm]);
+
+  const visibleConversations = useMemo(
+    () =>
+      conversations.filter((conversation) => {
+        if (conversation.type === 'global') return true;
+        if (hiddenConversationIds.includes(conversation.id)) return false;
+        return conversationMembers.some(
+          (member) => member.conversation_id === conversation.id && member.user_id === userId
+        );
+      }),
+    [conversationMembers, conversations, hiddenConversationIds, userId]
+  );
+
   const sortedConversations = useMemo(() => {
-    return [...conversations].sort((a, b) => {
+    return [...visibleConversations].sort((a, b) => {
       if (a.type === 'global') return -1;
       if (b.type === 'global') return 1;
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
-  }, [conversations]);
+  }, [visibleConversations]);
 
   const selectedConversation = useMemo(
-    () => conversations.find((conversation) => conversation.id === selectedConversationId) ?? null,
-    [conversations, selectedConversationId]
+    () => visibleConversations.find((conversation) => conversation.id === selectedConversationId) ?? null,
+    [selectedConversationId, visibleConversations]
   );
 
   const unreadNotifications = notifications.filter((item) => !item.is_read).length;
+  const canLeaveSelectedGroup = selectedConversation?.type === 'group';
+  const canAddMembersToSelectedGroup = selectedConversation?.type === 'group';
+  const canManageSelectedGroup = selectedConversation?.type === 'group' && selectedConversation.created_by === userId;
+  const selectedGroupConversationId = selectedConversation?.type === 'group' ? selectedConversation.id : null;
+  const selectedGroupMembers = useMemo(
+    () =>
+      selectedConversation?.type === 'group'
+        ? conversationMembers
+            .filter((member) => member.conversation_id === selectedConversation.id)
+            .map((member) => profileMap.get(member.user_id))
+            .filter((profile): profile is Profile => Boolean(profile))
+        : [],
+    [conversationMembers, profileMap, selectedConversation]
+  );
 
   const getConversationTitle = (conversation: Conversation) => {
     if (conversation.type === 'global') return 'Global Campus Chat';
@@ -159,21 +175,43 @@ export default function CampusChatPanel({ userId, userEmail }: CampusChatPanelPr
       .filter((member) => member.conversation_id === conversation.id && member.user_id !== userId)
       .map((member) => member.user_id);
     const otherProfile = profileMap.get(memberIds[0]);
-    return otherProfile?.display_name || otherProfile?.username || 'Private Chat';
+    if (!otherProfile) return 'Private Chat';
+
+    const heading = getProfileHeading(otherProfile);
+    const subheading = getProfileSubheading(otherProfile);
+    return subheading ? `${heading} (${subheading})` : heading;
+  };
+
+  const getCurrentUserLabel = () => {
+    const currentProfile = profileMap.get(userId);
+    if (currentProfile?.username) {
+      return getProfileSubheading(currentProfile) ? `${getProfileHeading(currentProfile)} (${getProfileSubheading(currentProfile)})` : getProfileHeading(currentProfile);
+    }
+
+    const fallbackUsername = buildFallbackUsername(userEmail, userId);
+    return `${userEmail.split('@')[0] || 'Student'} (@${fallbackUsername})`;
   };
 
   const addConversationMember = async (conversationId: string, memberId: string) => {
-    const { error } = await supabase.from('conversation_members').insert({
-      conversation_id: conversationId,
-      user_id: memberId,
-    });
+    const { error } = await supabase
+      .from('conversation_members')
+      .upsert(
+        {
+          conversation_id: conversationId,
+          user_id: memberId,
+        },
+        {
+          onConflict: 'conversation_id,user_id',
+          ignoreDuplicates: true,
+        }
+      );
 
     if (error && !isDuplicateKeyError(error)) {
       console.error(`Failed to add member ${memberId} to conversation ${conversationId}:`, error.message);
-      return false;
+      return { ok: false, message: error.message };
     }
 
-    return true;
+    return { ok: true, message: null as string | null };
   };
 
   const loadMessages = async (conversationId: string) => {
@@ -186,10 +224,25 @@ export default function CampusChatPanel({ userId, userEmail }: CampusChatPanelPr
 
     if (error) {
       console.error('Failed to load messages:', error.message);
-      return;
+      setChatError(`Couldn't load messages: ${error.message}`);
+      return false;
     }
 
+    setChatError(null);
     setMessages((data ?? []) as Message[]);
+    return true;
+  };
+
+  const postSystemMessage = async (conversationId: string, message: string) => {
+    const { error } = await supabase.from('messages').insert({
+      conversation_id: conversationId,
+      sender_id: userId,
+      content: `${SYSTEM_MESSAGE_PREFIX}${message}`,
+    });
+
+    if (error) {
+      console.error('Failed to post system message:', error.message);
+    }
   };
 
   const ensureBaseRecords = async () => {
@@ -243,8 +296,109 @@ export default function CampusChatPanel({ userId, userEmail }: CampusChatPanelPr
     }
   };
 
+  async function ensureDirectConversation(otherUserId: string) {
+    const pairKey = [userId, otherUserId].sort().join(':');
+    let createdConversationInThisCall = false;
+
+    const existing = await supabase
+      .from('conversations')
+      .select('*')
+      .eq('direct_pair_key', pairKey)
+      .maybeSingle();
+
+    if (existing.error && !isNoRowsError(existing.error)) {
+      console.error('Failed to look up direct conversation:', existing.error.message);
+      return null;
+    }
+
+    let conversation = existing.data as Conversation | null;
+    if (!conversation) {
+      const conversationId = crypto.randomUUID();
+      const insertResult = await supabase
+        .from('conversations')
+        .insert({
+          id: conversationId,
+          type: 'direct',
+          direct_pair_key: pairKey,
+          created_by: userId,
+        });
+
+      if (insertResult.error && !isDuplicateKeyError(insertResult.error)) {
+        console.error('Failed to create direct conversation:', insertResult.error.message);
+        return null;
+      }
+
+      if (!insertResult.error) {
+        conversation = {
+          id: conversationId,
+          type: 'direct',
+          name: null,
+          slug: null,
+          direct_pair_key: pairKey,
+          created_by: userId,
+          created_at: new Date().toISOString(),
+        };
+        createdConversationInThisCall = true;
+      }
+
+      if (!conversation && isDuplicateKeyError(insertResult.error)) {
+        const retryLookup = await supabase
+          .from('conversations')
+          .select('*')
+          .eq('direct_pair_key', pairKey)
+          .maybeSingle();
+
+        if (retryLookup.error && !isNoRowsError(retryLookup.error)) {
+          console.error('Failed to reload direct conversation after duplicate key:', retryLookup.error.message);
+          return null;
+        }
+
+        conversation = retryLookup.data as Conversation | null;
+      }
+    }
+
+    if (!conversation) return null;
+
+    const currentUserAdded = await addConversationMember(conversation.id, userId);
+    if (!currentUserAdded.ok) {
+      return null;
+    }
+
+    if (createdConversationInThisCall || conversation.created_by === userId) {
+      const otherUserAdded = await addConversationMember(conversation.id, otherUserId);
+      if (!otherUserAdded.ok) {
+        return null;
+      }
+    }
+
+    return conversation;
+  }
+
+  async function ensureDirectConversationsForAcceptedFriends(requests: FriendRequest[]) {
+    const acceptedFriendIds = Array.from(
+      new Set(
+        requests
+          .filter((request) => request.status === 'accepted')
+          .map((request) => (request.sender_id === userId ? request.receiver_id : request.sender_id))
+          .filter((friendId) => friendId !== userId)
+      )
+    );
+
+    for (const friendId of acceptedFriendIds) {
+      await ensureDirectConversation(friendId);
+    }
+  }
+
   const refreshChatData = async () => {
-    setLoading(true);
+    const requestId = refreshRequestIdRef.current + 1;
+    refreshRequestIdRef.current = requestId;
+    const shouldShowSkeleton = conversations.length === 0 && messages.length === 0;
+    if (shouldShowSkeleton) {
+      setLoading(true);
+    } else {
+      setIsRefreshing(true);
+    }
+
     await ensureBaseRecords();
 
     const [
@@ -252,7 +406,6 @@ export default function CampusChatPanel({ userId, userEmail }: CampusChatPanelPr
       requestResult,
       friendshipsResult,
       notificationsResult,
-      membersResult,
       globalConversationResult,
     ] = await Promise.all([
       supabase.from('profiles').select('*').order('display_name', { ascending: true }),
@@ -271,14 +424,18 @@ export default function CampusChatPanel({ userId, userEmail }: CampusChatPanelPr
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(50),
-      supabase.from('conversation_members').select('*').eq('user_id', userId),
       supabase.from('conversations').select('*').eq('slug', 'global-lobby').maybeSingle(),
     ]);
 
     if (profilesResult.data) setProfiles(profilesResult.data as Profile[]);
-    if (requestResult.data) setFriendRequests(requestResult.data as FriendRequest[]);
+    const requestRows = (requestResult.data ?? []) as FriendRequest[];
+    setFriendRequests(requestRows);
     if (friendshipsResult.data) setFriendships(friendshipsResult.data as Friendship[]);
     if (notificationsResult.data) setNotifications(notificationsResult.data as NotificationItem[]);
+    await ensureDirectConversationsForAcceptedFriends(requestRows);
+
+    const membersResult = await supabase.from('conversation_members').select('*').eq('user_id', userId);
+    if (refreshRequestIdRef.current !== requestId) return;
 
     const memberRows = (membersResult.data ?? []) as ConversationMember[];
     const conversationIds = new Set(memberRows.map((member) => member.conversation_id));
@@ -303,25 +460,42 @@ export default function CampusChatPanel({ userId, userEmail }: CampusChatPanelPr
         .in('conversation_id', allConversationIds);
       allMembers = (data ?? []) as ConversationMember[];
     }
+    if (refreshRequestIdRef.current !== requestId) return;
 
     setConversationMembers(allMembers);
     setConversations(loadedConversations);
 
+    const visibleConversationIds = new Set(
+      loadedConversations
+        .filter((conversation) => {
+          if (conversation.type === 'global') return true;
+          return allMembers.some(
+            (member) => member.conversation_id === conversation.id && member.user_id === userId
+          );
+        })
+        .map((conversation) => conversation.id)
+    );
+
     const currentSelectedConversationId = selectedConversationIdRef.current;
     const nextSelectedConversationId =
-      currentSelectedConversationId && loadedConversations.some((conversation) => conversation.id === currentSelectedConversationId)
+      currentSelectedConversationId && visibleConversationIds.has(currentSelectedConversationId)
         ? currentSelectedConversationId
-        : globalConversation?.id ?? loadedConversations[0]?.id ?? null;
+        : globalConversation?.id ??
+          loadedConversations.find((conversation) => visibleConversationIds.has(conversation.id))?.id ??
+          null;
 
     setSelectedConversationId(nextSelectedConversationId);
 
     if (nextSelectedConversationId) {
       await loadMessages(nextSelectedConversationId);
-    } else {
+    } else if (shouldShowSkeleton) {
       setMessages([]);
     }
 
+    if (refreshRequestIdRef.current !== requestId) return;
+
     setLoading(false);
+    setIsRefreshing(false);
   };
 
   const refreshChatDataEvent = useEffectEvent(() => {
@@ -335,12 +509,7 @@ export default function CampusChatPanel({ userId, userEmail }: CampusChatPanelPr
   useEffect(() => {
     refreshChatDataEvent();
 
-    const intervalId = window.setInterval(() => {
-      refreshChatDataEvent();
-    }, POLL_INTERVAL_MS);
-
     return () => {
-      window.clearInterval(intervalId);
       void supabase
         .from('profiles')
         .update({ is_online: false, last_seen: new Date().toISOString() })
@@ -349,20 +518,325 @@ export default function CampusChatPanel({ userId, userEmail }: CampusChatPanelPr
   }, [supabase, userEmail, userId]);
 
   useEffect(() => {
+    const storedValue = window.localStorage.getItem(hiddenConversationStorageKey);
+    if (!storedValue) {
+      setHasLoadedHiddenConversationIds(true);
+      return;
+    }
+
+    try {
+      const parsedValue = JSON.parse(storedValue) as string[];
+      if (Array.isArray(parsedValue)) {
+        setHiddenConversationIds(parsedValue);
+      }
+    } catch {
+      window.localStorage.removeItem(hiddenConversationStorageKey);
+    } finally {
+      setHasLoadedHiddenConversationIds(true);
+    }
+  }, [hiddenConversationStorageKey]);
+
+  useEffect(() => {
+    if (!hasLoadedHiddenConversationIds) return;
+    window.localStorage.setItem(hiddenConversationStorageKey, JSON.stringify(hiddenConversationIds));
+  }, [hasLoadedHiddenConversationIds, hiddenConversationIds, hiddenConversationStorageKey]);
+
+  useEffect(() => {
     selectedConversationIdRef.current = selectedConversationId;
+    conversationIdsRef.current = conversations.map((conversation) => conversation.id);
     if (!selectedConversationId) return;
     loadMessagesEvent(selectedConversationId);
+  }, [conversations, selectedConversationId]);
+
+  useEffect(() => {
+    if (!selectedConversationId) return;
+    if (visibleConversations.some((conversation) => conversation.id === selectedConversationId)) return;
+
+    const fallbackConversationId =
+      visibleConversations.find((conversation) => conversation.type === 'global')?.id ??
+      visibleConversations[0]?.id ??
+      null;
+
+    setSelectedConversationId(fallbackConversationId);
+  }, [selectedConversationId, visibleConversations]);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: 'smooth',
+    });
+  }, [messages]);
+
+  useEffect(() => {
+    if (!selectedConversationId) return;
+
+    loadMessagesEvent(selectedConversationId);
+    const intervalId = window.setInterval(() => {
+      loadMessagesEvent(selectedConversationId);
+    }, 2000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, [selectedConversationId]);
+
+  useEffect(() => {
+    if (!selectedGroupConversationId) return;
+
+    const intervalId = window.setInterval(() => {
+      refreshChatDataEvent();
+    }, 5000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [selectedGroupConversationId]);
+
+  const handleProfileChange = useEffectEvent((payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+    const nextProfile = payload.new as Profile | null;
+    const previousProfile = payload.old as Profile | null;
+    const targetUserId = nextProfile?.user_id ?? previousProfile?.user_id;
+
+    if (!targetUserId) return;
+
+    if (payload.eventType === 'DELETE') {
+      setProfiles((prev) => prev.filter((profile) => profile.user_id !== targetUserId));
+      return;
+    }
+
+    if (!nextProfile) return;
+    setProfiles((prev) => upsertByKey(prev, nextProfile, (profile) => profile.user_id));
+  });
+
+  const handleFriendRequestChange = useEffectEvent(
+    (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+      const nextRequest = payload.new as FriendRequest | null;
+      const previousRequest = payload.old as FriendRequest | null;
+      const targetRequest = nextRequest ?? previousRequest;
+
+      if (!targetRequest) return;
+      if (targetRequest.sender_id !== userId && targetRequest.receiver_id !== userId) return;
+
+      if (payload.eventType === 'DELETE') {
+        setFriendRequests((prev) => prev.filter((request) => request.id !== targetRequest.id));
+      } else if (nextRequest) {
+        setFriendRequests((prev) => upsertByKey(prev, nextRequest, (request) => request.id));
+      }
+
+      void refreshChatData();
+    }
+  );
+
+  const handleFriendshipChange = useEffectEvent((payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+    const nextFriendship = payload.new as Friendship | null;
+    const previousFriendship = payload.old as Friendship | null;
+    const targetFriendship = nextFriendship ?? previousFriendship;
+
+    if (!targetFriendship) return;
+    if (targetFriendship.user_id !== userId && targetFriendship.friend_id !== userId) return;
+
+    if (payload.eventType === 'DELETE') {
+      setFriendships((prev) =>
+        prev.filter(
+          (entry) =>
+            !(
+              entry.user_id === targetFriendship.user_id &&
+              entry.friend_id === targetFriendship.friend_id
+            )
+        )
+      );
+    } else if (nextFriendship) {
+      setFriendships((prev) => {
+        const exists = prev.some(
+          (entry) =>
+            entry.user_id === nextFriendship.user_id && entry.friend_id === nextFriendship.friend_id
+        );
+
+        return exists ? prev : [nextFriendship, ...prev];
+      });
+    }
+
+    void refreshChatData();
+  });
+
+  const handleNotificationChange = useEffectEvent(
+    (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+      const nextNotification = payload.new as NotificationItem | null;
+      const previousNotification = payload.old as NotificationItem | null;
+      const targetNotification = nextNotification ?? previousNotification;
+
+      if (!targetNotification || targetNotification.user_id !== userId) return;
+
+      if (payload.eventType === 'DELETE') {
+        setNotifications((prev) => prev.filter((notification) => notification.id !== targetNotification.id));
+        return;
+      }
+
+      if (!nextNotification) return;
+      setNotifications((prev) => upsertByKey(prev, nextNotification, (notification) => notification.id));
+
+      if (
+        payload.eventType === 'INSERT' &&
+        (nextNotification.type === 'group_invite' || nextNotification.type === 'friend_accept')
+      ) {
+        void refreshChatData();
+      }
+    }
+  );
+
+  const handleConversationStructureChange = useEffectEvent(
+    (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+      const nextRow = payload.new as { conversation_id?: string; id?: string; created_by?: string | null } | null;
+      const previousRow = payload.old as { conversation_id?: string; id?: string; created_by?: string | null } | null;
+      const conversationId = nextRow?.conversation_id ?? nextRow?.id ?? previousRow?.conversation_id ?? previousRow?.id;
+
+      if (!conversationId) return;
+      const isKnownConversation = conversationIdsRef.current.includes(conversationId);
+      const isCreatedByCurrentUser = nextRow?.created_by === userId || previousRow?.created_by === userId;
+
+      if (!isKnownConversation && !isCreatedByCurrentUser) {
+        const memberUserId = nextRow && 'user_id' in nextRow ? String(nextRow.user_id ?? '') : '';
+        const oldMemberUserId = previousRow && 'user_id' in previousRow ? String(previousRow.user_id ?? '') : '';
+        if (memberUserId !== userId && oldMemberUserId !== userId) return;
+      }
+
+      void refreshChatData();
+    }
+  );
+
+  const handleConversationMemberChange = useEffectEvent(
+    (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+      const nextMember = payload.new as ConversationMember | null;
+      const previousMember = payload.old as ConversationMember | null;
+      const targetMember = nextMember ?? previousMember;
+
+      if (!targetMember) return;
+
+      const conversationId = targetMember.conversation_id;
+      const memberUserId = targetMember.user_id;
+      const isSelectedGroup = selectedConversationIdRef.current === conversationId;
+      const affectsKnownConversation = conversationIdsRef.current.includes(conversationId);
+      const affectsCurrentUserMembership = memberUserId === userId;
+
+      if (!affectsKnownConversation && !affectsCurrentUserMembership) {
+        return;
+      }
+
+      if (payload.eventType === 'DELETE') {
+        setConversationMembers((prev) =>
+          prev.filter(
+            (member) =>
+              !(member.conversation_id === conversationId && member.user_id === memberUserId)
+          )
+        );
+
+        if (affectsCurrentUserMembership) {
+          setConversations((prev) => prev.filter((conversation) => conversation.id !== conversationId));
+          setMessages((prev) => (isSelectedGroup ? [] : prev));
+
+          if (isSelectedGroup) {
+            const fallbackConversationId =
+              conversations
+                .filter((conversation) => conversation.id !== conversationId)
+                .find((conversation) => conversation.type === 'global')?.id ??
+              conversations.find((conversation) => conversation.id !== conversationId)?.id ??
+              null;
+
+            setSelectedConversationId(fallbackConversationId);
+          }
+        }
+
+        if (isSelectedGroup) {
+          void refreshChatData();
+        }
+        return;
+      }
+
+      if (!nextMember) return;
+
+      setConversationMembers((prev) =>
+        upsertByKey(prev, nextMember, (member) => `${member.conversation_id}:${member.user_id}`)
+      );
+
+      if (affectsCurrentUserMembership || isSelectedGroup) {
+        void refreshChatData();
+      }
+    }
+  );
+
+  const handleMessageChange = useEffectEvent((payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+    const nextMessage = payload.new as Message | null;
+    const previousMessage = payload.old as Message | null;
+    const targetMessage = nextMessage ?? previousMessage;
+
+    if (!targetMessage) return;
+    if (!conversationIdsRef.current.includes(targetMessage.conversation_id)) return;
+
+    if (selectedConversationIdRef.current === targetMessage.conversation_id) {
+      if (payload.eventType === 'DELETE') {
+        setMessages((prev) => prev.filter((message) => message.id !== targetMessage.id));
+      } else if (nextMessage) {
+        setMessages((prev) => sortMessagesByCreatedAt(upsertByKey(prev, nextMessage, (message) => message.id)));
+      }
+    }
+
+    if (payload.eventType === 'INSERT') {
+      setConversations((prev) => {
+        const current = prev.find((conversation) => conversation.id === targetMessage.conversation_id);
+        if (!current) return prev;
+
+        return [
+          {
+            ...current,
+            created_at: targetMessage.created_at,
+          },
+          ...prev.filter((conversation) => conversation.id !== current.id),
+        ];
+      });
+    }
+  });
+
+  useEffect(() => {
+    const socialChannel = supabase
+      .channel(`campus-social:${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, handleProfileChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friend_requests' }, handleFriendRequestChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, handleFriendshipChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, handleNotificationChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, handleConversationStructureChange)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'conversation_members' }, handleConversationMemberChange)
+      .subscribe();
+
+    const messageChannel = supabase
+      .channel(`campus-messages:${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, handleMessageChange)
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(socialChannel);
+      void supabase.removeChannel(messageChannel);
+    };
+  }, [supabase, userId]);
 
   const sendFriendRequest = async (receiverId: string) => {
     const receiverProfile = profileMap.get(receiverId);
     if (!receiverProfile) return;
 
-    await supabase.from('friend_requests').insert({
+    setChatError(null);
+
+    const { error: requestError } = await supabase.from('friend_requests').insert({
       sender_id: userId,
       receiver_id: receiverId,
       status: 'pending',
     });
+
+    if (requestError && !isDuplicateKeyError(requestError)) {
+      setChatError(`Couldn't send friend request: ${requestError.message}`);
+      return;
+    }
 
     await supabase.from('notifications').insert({
       user_id: receiverId,
@@ -375,53 +849,33 @@ export default function CampusChatPanel({ userId, userEmail }: CampusChatPanelPr
     await refreshChatData();
   };
 
-  const ensureDirectConversation = async (otherUserId: string) => {
-    const pairKey = [userId, otherUserId].sort().join(':');
-
-    const existing = await supabase
-      .from('conversations')
-      .select('*')
-      .eq('direct_pair_key', pairKey)
-      .maybeSingle();
-
-    let conversation = existing.data as Conversation | null;
-    if (!conversation) {
-      const insertResult = await supabase
-        .from('conversations')
-        .insert({
-          type: 'direct',
-          direct_pair_key: pairKey,
-          created_by: userId,
-        })
-        .select()
-        .single();
-      conversation = insertResult.data as Conversation | null;
-    }
-
-    if (!conversation) return null;
-
-    const currentUserAdded = await addConversationMember(conversation.id, userId);
-    const otherUserAdded = await addConversationMember(conversation.id, otherUserId);
-
-    if (!currentUserAdded || !otherUserAdded) {
-      return null;
-    }
-
-    return conversation;
-  };
-
   const acceptFriendRequest = async (request: FriendRequest) => {
-    await supabase
+    setChatError(null);
+
+    const { error: requestError } = await supabase
       .from('friend_requests')
       .update({ status: 'accepted' })
       .eq('id', request.id);
 
-    await supabase.from('friendships').upsert([
-      { user_id: request.sender_id, friend_id: request.receiver_id },
-      { user_id: request.receiver_id, friend_id: request.sender_id },
-    ]);
+    if (requestError) {
+      setChatError(`Couldn't accept the request: ${requestError.message}`);
+      return;
+    }
+
+    const { error: friendshipError } = await supabase.from('friendships').upsert({
+      user_id: request.receiver_id,
+      friend_id: request.sender_id,
+    });
+
+    if (friendshipError && !isDuplicateKeyError(friendshipError)) {
+      setChatError(`Friend request was accepted, but the friendship record failed: ${friendshipError.message}`);
+      return;
+    }
 
     const directConversation = await ensureDirectConversation(request.sender_id);
+    if (!directConversation) {
+      setChatError("Friend request was accepted, but the private chat couldn't be prepared yet.");
+    }
 
     await supabase.from('notifications').insert({
       user_id: request.sender_id,
@@ -434,6 +888,34 @@ export default function CampusChatPanel({ userId, userEmail }: CampusChatPanelPr
       },
     });
 
+    setFriendRequests((prev) =>
+      prev.map((item) =>
+        item.id === request.id
+          ? {
+              ...item,
+              status: 'accepted',
+            }
+          : item
+      )
+    );
+    setFriendships((prev) => {
+      const alreadyExists = prev.some(
+        (item) =>
+          (item.user_id === request.receiver_id && item.friend_id === request.sender_id) ||
+          (item.user_id === request.sender_id && item.friend_id === request.receiver_id)
+      );
+
+      if (alreadyExists) return prev;
+
+      return [
+        ...prev,
+        {
+          user_id: request.receiver_id,
+          friend_id: request.sender_id,
+        },
+      ];
+    });
+
     await refreshChatData();
 
     if (directConversation) {
@@ -443,61 +925,261 @@ export default function CampusChatPanel({ userId, userEmail }: CampusChatPanelPr
   };
 
   const rejectFriendRequest = async (requestId: string) => {
+    setChatError(null);
     await supabase.from('friend_requests').update({ status: 'rejected' }).eq('id', requestId);
     await refreshChatData();
   };
 
   const openDirectChat = async (friendId: string) => {
+    setChatError(null);
     const conversation = await ensureDirectConversation(friendId);
     await refreshChatData();
     if (conversation) {
       setActiveView('chat');
       setSelectedConversationId(conversation.id);
+    } else {
+      setChatError("Couldn't open the private chat yet. Try again in a moment.");
     }
   };
 
   const createGroupChat = async () => {
-    if (!groupName.trim() || selectedFriendIds.length === 0) return;
+    if (groupCreationInFlightRef.current) return;
 
-    const conversationResult = await supabase
-      .from('conversations')
-      .insert({
-        type: 'group',
-        name: groupName.trim(),
-        created_by: userId,
-      })
-      .select()
-      .single();
+    const trimmedGroupName = groupName.trim();
+    setChatError(null);
 
-    const conversation = conversationResult.data as Conversation | null;
-    if (!conversation) return;
-
-    const uniqueMembers = Array.from(new Set([userId, ...selectedFriendIds]));
-    await supabase.from('conversation_members').insert(
-      uniqueMembers.map((memberId) => ({
-        conversation_id: conversation.id,
-        user_id: memberId,
-      }))
-    );
-
-    if (selectedFriendIds.length > 0) {
-      await supabase.from('notifications').insert(
-        selectedFriendIds.map((memberId) => ({
-          user_id: memberId,
-          type: 'group_invite',
-          title: 'Added to a group chat',
-          body: `${profileMap.get(userId)?.display_name || userEmail} added you to "${groupName.trim()}".`,
-          payload: { conversation_id: conversation.id },
-        }))
-      );
+    if (!trimmedGroupName) {
+      setChatError('Give the group a name before creating it.');
+      return;
     }
 
-    setGroupName('');
-    setSelectedFriendIds([]);
-    setIsCreatingGroup(false);
+    if (selectedFriendIds.length === 0) {
+      setChatError('Choose at least one friend for the group.');
+      return;
+    }
+
+    groupCreationInFlightRef.current = true;
+    setIsCreatingGroupChat(true);
+
+    try {
+      const conversationId = crypto.randomUUID();
+      const { error: conversationInsertError } = await supabase
+        .from('conversations')
+        .insert({
+          id: conversationId,
+          type: 'group',
+          name: trimmedGroupName,
+          created_by: userId,
+        });
+
+      if (conversationInsertError) {
+        setChatError(`Couldn't create the group: ${conversationInsertError.message}`);
+        return;
+      }
+
+      const conversation: Conversation = {
+        id: conversationId,
+        type: 'group',
+        name: trimmedGroupName,
+        slug: null,
+        direct_pair_key: null,
+        created_by: userId,
+        created_at: new Date().toISOString(),
+      };
+
+      const uniqueMembers = Array.from(new Set([userId, ...selectedFriendIds]));
+      for (const memberId of uniqueMembers) {
+        const added = await addConversationMember(conversation.id, memberId);
+        if (!added.ok) {
+          setChatError(
+            memberId === userId
+              ? `The group was created, but you could not be joined to it: ${added.message || 'unknown error'}.`
+              : `The group was created, but a member could not be added: ${added.message || 'unknown error'}.`
+          );
+          return;
+        }
+      }
+
+      await postSystemMessage(conversation.id, `${getCurrentUserLabel()} created the group.`);
+
+      if (selectedFriendIds.length > 0) {
+        await supabase.from('notifications').insert(
+          selectedFriendIds.map((memberId) => ({
+            user_id: memberId,
+            type: 'group_invite',
+            title: 'Added to a group chat',
+            body: `${profileMap.get(userId)?.display_name || userEmail} added you to "${trimmedGroupName}".`,
+            payload: { conversation_id: conversation.id },
+          }))
+        );
+      }
+
+      setGroupName('');
+      setSelectedFriendIds([]);
+      setIsCreatingGroup(false);
+      await refreshChatData();
+      setActiveView('chat');
+      setSelectedConversationId(conversation.id);
+    } finally {
+      groupCreationInFlightRef.current = false;
+      setIsCreatingGroupChat(false);
+    }
+  };
+
+  const leaveSelectedGroup = async () => {
+    if (!selectedConversation || selectedConversation.type !== 'group' || isLeavingGroup) return;
+
+    setChatError(null);
+    setIsLeavingGroup(true);
+
+    const conversationId = selectedConversation.id;
+    const remainingConversations = conversations.filter((conversation) => conversation.id !== conversationId);
+    const fallbackConversationId =
+      remainingConversations.find((conversation) => conversation.type === 'global')?.id ??
+      remainingConversations[0]?.id ??
+      null;
+
+    setHiddenConversationIds((prev) => (prev.includes(conversationId) ? prev : [...prev, conversationId]));
+    setConversations(remainingConversations);
+    setConversationMembers((prev) => prev.filter((member) => member.conversation_id !== conversationId || member.user_id !== userId));
+    setMessages((prev) => (selectedConversationIdRef.current === conversationId ? [] : prev));
+    if (selectedConversationIdRef.current === conversationId) {
+      setSelectedConversationId(fallbackConversationId);
+    }
+
+    await postSystemMessage(conversationId, `${getCurrentUserLabel()} left the group.`);
+
+    const { error } = await supabase
+      .from('conversation_members')
+      .delete()
+      .eq('conversation_id', conversationId)
+      .eq('user_id', userId);
+
+    if (error) {
+      setChatError(`Couldn't leave the group: ${error.message}`);
+      await refreshChatData();
+      setIsLeavingGroup(false);
+      return;
+    }
+
+    const { data: membershipAfterDelete, error: verifyDeleteError } = await supabase
+      .from('conversation_members')
+      .select('conversation_id')
+      .eq('conversation_id', conversationId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (verifyDeleteError && !isNoRowsError(verifyDeleteError)) {
+      setChatError(`Group leave verification failed: ${verifyDeleteError.message}`);
+      await refreshChatData();
+      setIsLeavingGroup(false);
+      return;
+    }
+
+    if (membershipAfterDelete) {
+      setChatError("Couldn't leave the group because your membership record still exists.");
+      await refreshChatData();
+      setIsLeavingGroup(false);
+      return;
+    }
+
     await refreshChatData();
-    setActiveView('chat');
-    setSelectedConversationId(conversation.id);
+    setIsLeavingGroup(false);
+  };
+
+  const addMemberToSelectedGroup = async () => {
+    if (!selectedConversation || selectedConversation.type !== 'group' || !canAddMembersToSelectedGroup || isAddingGroupMember) {
+      return;
+    }
+
+    const trimmedUsername = groupMemberUsername.trim().toLowerCase();
+    setChatError(null);
+
+    if (!trimmedUsername) {
+      setChatError('Enter a username to add someone to this group.');
+      return;
+    }
+
+    const targetProfile =
+      profiles.find((profile) => profile.username.toLowerCase() === trimmedUsername) ?? null;
+
+    if (!targetProfile) {
+      setChatError(`No user found with username "${trimmedUsername}".`);
+      return;
+    }
+
+    if (targetProfile.user_id === userId) {
+      setChatError('You are already part of this group.');
+      return;
+    }
+
+    const isAlreadyMember = conversationMembers.some(
+      (member) =>
+        member.conversation_id === selectedConversation.id && member.user_id === targetProfile.user_id
+    );
+
+    if (isAlreadyMember) {
+      setChatError(`@${targetProfile.username} is already in this group.`);
+      return;
+    }
+
+    setIsAddingGroupMember(true);
+
+    try {
+      const added = await addConversationMember(selectedConversation.id, targetProfile.user_id);
+      if (!added) {
+        setChatError(`Couldn't add @${targetProfile.username} to the group.`);
+        return;
+      }
+
+      await supabase.from('notifications').insert({
+        user_id: targetProfile.user_id,
+        type: 'group_invite',
+        title: 'Added to a group chat',
+        body: `${profileMap.get(userId)?.display_name || userEmail} added you to "${selectedConversation.name || 'a group chat'}".`,
+        payload: { conversation_id: selectedConversation.id },
+      });
+
+      await postSystemMessage(
+        selectedConversation.id,
+        `${getCurrentUserLabel()} added ${getProfileHeading(targetProfile)} (@${targetProfile.username}).`
+      );
+
+      setGroupMemberUsername('');
+      await refreshChatData();
+    } finally {
+      setIsAddingGroupMember(false);
+    }
+  };
+
+  const removeMemberFromSelectedGroup = async (targetProfile: Profile) => {
+    if (!selectedConversation || selectedConversation.type !== 'group' || !canManageSelectedGroup) {
+      return;
+    }
+
+    if (targetProfile.user_id === userId) {
+      setChatError('Use "Leave Group" if you want to remove yourself.');
+      return;
+    }
+
+    setChatError(null);
+
+    const { error } = await supabase
+      .from('conversation_members')
+      .delete()
+      .eq('conversation_id', selectedConversation.id)
+      .eq('user_id', targetProfile.user_id);
+
+    if (error) {
+      setChatError(`Couldn't remove @${targetProfile.username}: ${error.message}`);
+      return;
+    }
+
+    await postSystemMessage(
+      selectedConversation.id,
+      `${getCurrentUserLabel()} removed ${getProfileHeading(targetProfile)} (@${targetProfile.username}) from the group.`
+    );
+    await refreshChatData();
   };
 
   const sendMessage = async () => {
@@ -512,312 +1194,141 @@ export default function CampusChatPanel({ userId, userEmail }: CampusChatPanelPr
     if (!trimmedMessage) return;
 
     setIsSending(true);
-
-    const { error } = await supabase.from('messages').insert({
+    const optimisticMessage: Message = {
+      id: `temp-${crypto.randomUUID()}`,
       conversation_id: selectedConversationId,
       sender_id: userId,
       content: trimmedMessage,
-    });
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => sortMessagesByCreatedAt([...prev, optimisticMessage]));
+    setNewMessage('');
+
+    const { data, error } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: selectedConversationId,
+        sender_id: userId,
+        content: trimmedMessage,
+      })
+      .select()
+      .single();
 
     if (error) {
       console.error('Failed to send message:', error.message);
       setChatError(`Couldn't send message: ${error.message}`);
+      setMessages((prev) => prev.filter((message) => message.id !== optimisticMessage.id));
       setIsSending(false);
       return;
     }
 
-    setNewMessage('');
-    await loadMessages(selectedConversationId);
+    if (data) {
+      setMessages((prev) =>
+        sortMessagesByCreatedAt(
+          upsertByKey(
+            prev.map((message) => (message.id === optimisticMessage.id ? (data as Message) : message)),
+            data as Message,
+            (message) => message.id
+          )
+        )
+      );
+    }
+
     setIsSending(false);
   };
 
-  const markNotificationRead = async (notificationId: string) => {
-    await supabase.from('notifications').update({ is_read: true }).eq('id', notificationId);
+  const markNotificationRead = async (notification: NotificationItem) => {
+    await supabase.from('notifications').update({ is_read: true }).eq('id', notification.id);
+
+    const conversationId = notification.payload?.conversation_id;
+    if (conversationId) {
+      setSelectedConversationId(conversationId);
+      setActiveView('chat');
+    }
+
     await refreshChatData();
   };
-
   return (
-    <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
-      <div className="space-y-4">
-        <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-          <div className="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-200/70">Campus Chat</div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {[
-              { key: 'chat', label: 'Chats' },
-              { key: 'friends', label: 'Friends' },
-              { key: 'requests', label: `Requests (${receivedRequests.length})` },
-              { key: 'notifications', label: `Alerts (${unreadNotifications})` },
-            ].map((item) => (
-              <button
-                key={item.key}
-                onClick={() => setActiveView(item.key as typeof activeView)}
-                className={`rounded-xl px-3 py-2 text-sm transition ${activeView === item.key ? 'bg-gradient-to-r from-cyan-500 to-purple-500 text-white' : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'}`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </div>
+    <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
+      <CampusChatSidebar
+        activeView={activeView}
+        availableFriends={availableFriends}
+        createGroupChat={createGroupChat}
+        getConversationTitle={getConversationTitle}
+        groupName={groupName}
+        isCreatingGroup={isCreatingGroup}
+        isCreatingGroupChat={isCreatingGroupChat}
+        receivedRequestsCount={receivedRequests.length}
+        selectedConversationId={selectedConversationId}
+        selectedFriendIds={selectedFriendIds}
+        setActiveView={setActiveView}
+        setGroupName={setGroupName}
+        setIsCreatingGroup={setIsCreatingGroup}
+        setSelectedConversationId={setSelectedConversationId}
+        setSelectedFriendIds={setSelectedFriendIds}
+        sortedConversations={sortedConversations}
+        unreadNotifications={unreadNotifications}
+      />
 
-        <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-white font-semibold">Conversations</h3>
-            <button
-              onClick={() => setIsCreatingGroup((value) => !value)}
-              className="rounded-lg bg-white/10 px-3 py-1 text-xs text-white"
-            >
-              {isCreatingGroup ? 'Close' : 'New Group'}
-            </button>
-          </div>
+      <div className="campus-panel-strong rounded-[1.9rem] p-4">
+        {activeView === 'chat' ? (
+          <ChatViewPanel
+            addMemberToSelectedGroup={addMemberToSelectedGroup}
+            canAddMembersToSelectedGroup={canAddMembersToSelectedGroup}
+            canLeaveSelectedGroup={canLeaveSelectedGroup}
+            canManageSelectedGroup={canManageSelectedGroup}
+            chatError={chatError}
+            getConversationTitle={getConversationTitle}
+            groupMemberUsername={groupMemberUsername}
+            isAddingGroupMember={isAddingGroupMember}
+            isLeavingGroup={isLeavingGroup}
+            isRefreshing={isRefreshing}
+            isSending={isSending}
+            leaveSelectedGroup={leaveSelectedGroup}
+            loading={loading}
+            messages={messages}
+            messagesContainerRef={messagesContainerRef}
+            newMessage={newMessage}
+            profileMap={profileMap}
+            removeMemberFromSelectedGroup={removeMemberFromSelectedGroup}
+            selectedConversation={selectedConversation}
+            selectedConversationId={selectedConversationId}
+            selectedGroupMembers={selectedGroupMembers}
+            sendMessage={sendMessage}
+            setGroupMemberUsername={setGroupMemberUsername}
+            setNewMessage={setNewMessage}
+            userId={userId}
+          />
+        ) : null}
 
-          {isCreatingGroup && (
-            <div className="mb-4 rounded-xl border border-white/10 bg-white/5 p-3">
-              <input
-                value={groupName}
-                onChange={(event) => setGroupName(event.target.value)}
-                placeholder="Group name"
-                className="mb-3 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white placeholder-white/40"
-              />
-              <div className="max-h-32 space-y-2 overflow-y-auto">
-                {availableFriends.map((friend) => (
-                  <label key={friend.user_id} className="flex items-center gap-2 text-sm text-white/80">
-                    <input
-                      type="checkbox"
-                      checked={selectedFriendIds.includes(friend.user_id)}
-                      onChange={(event) => {
-                        setSelectedFriendIds((prev) =>
-                          event.target.checked
-                            ? [...prev, friend.user_id]
-                            : prev.filter((id) => id !== friend.user_id)
-                        );
-                      }}
-                    />
-                    <span>{friend.display_name}</span>
-                  </label>
-                ))}
-              </div>
-              <button
-                onClick={() => void createGroupChat()}
-                className="mt-3 w-full rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500 px-3 py-2 text-sm font-medium text-white"
-              >
-                Create Group
-              </button>
-            </div>
-          )}
+        {activeView === 'friends' ? (
+          <FriendsViewPanel
+            availableFriends={availableFriends}
+            filteredFriends={filteredFriends}
+            openDirectChat={openDirectChat}
+            searchTerm={searchTerm}
+            searchableProfiles={searchableProfiles}
+            sendFriendRequest={sendFriendRequest}
+            setSearchTerm={setSearchTerm}
+          />
+        ) : null}
 
-          <div className="space-y-2">
-            {sortedConversations.map((conversation) => (
-              <button
-                key={conversation.id}
-                onClick={() => {
-                  setSelectedConversationId(conversation.id);
-                  setActiveView('chat');
-                }}
-                className={`w-full rounded-xl px-3 py-3 text-left transition ${selectedConversationId === conversation.id ? 'bg-white/15 text-white' : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'}`}
-              >
-                <div className="font-medium">{getConversationTitle(conversation)}</div>
-                <div className="mt-1 text-xs uppercase tracking-[0.2em] text-cyan-200/70">{conversation.type}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+        {activeView === 'requests' ? (
+          <RequestsViewPanel
+            acceptFriendRequest={acceptFriendRequest}
+            profileMap={profileMap}
+            receivedRequests={receivedRequests}
+            rejectFriendRequest={rejectFriendRequest}
+            sentRequests={sentRequests}
+          />
+        ) : null}
 
-      <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
-        {activeView === 'chat' && (
-          <div className="flex h-[70vh] flex-col">
-            <div className="border-b border-white/10 pb-3">
-              <h3 className="text-xl font-semibold text-white">
-                {selectedConversation ? getConversationTitle(selectedConversation) : 'Campus Chat'}
-              </h3>
-              <p className="text-sm text-white/50">
-                {selectedConversation?.type === 'global'
-                  ? 'A shared public space for everyone signed into the platform.'
-                  : selectedConversation?.type === 'group'
-                    ? 'Group discussion with selected members.'
-                    : 'Private conversation between friends.'}
-              </p>
-              {chatError ? (
-                <div className="mt-3 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-sm text-red-100">
-                  {chatError}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="mt-4 flex-1 space-y-3 overflow-y-auto">
-              {loading ? (
-                <div className="text-white/60">Loading messages...</div>
-              ) : messages.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/15 p-6 text-center text-white/50">
-                  Start the conversation.
-                </div>
-              ) : (
-                messages.map((message) => {
-                  const sender = profileMap.get(message.sender_id);
-                  const isOwn = message.sender_id === userId;
-                  return (
-                    <div key={message.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[75%] rounded-2xl px-4 py-3 ${isOwn ? 'bg-gradient-to-r from-cyan-500 to-purple-500 text-white' : 'bg-white/10 text-white'}`}>
-                        <div className="mb-1 text-xs uppercase tracking-[0.2em] text-white/60">
-                          {sender?.display_name || sender?.username || 'Student'}
-                        </div>
-                        <div className="whitespace-pre-wrap text-sm leading-6">{message.content}</div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            <div className="mt-4 flex gap-3 border-t border-white/10 pt-4">
-              <input
-                value={newMessage}
-                onChange={(event) => setNewMessage(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault();
-                    void sendMessage();
-                  }
-                }}
-                placeholder="Write a message..."
-                className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/40"
-              />
-              <button
-                onClick={() => void sendMessage()}
-                disabled={isSending || !selectedConversationId || !newMessage.trim()}
-                className="rounded-xl bg-gradient-to-r from-cyan-500 to-purple-500 px-6 py-3 font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isSending ? 'Sending...' : 'Send'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {activeView === 'friends' && (
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-xl font-semibold text-white">Find People</h3>
-              <p className="text-sm text-white/50">Search by username to send a friend request.</p>
-            </div>
-            <input
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search username"
-              className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/40"
-            />
-            <div className="grid gap-3 md:grid-cols-2">
-              {searchableProfiles.map((profile) => (
-                <div key={profile.user_id} className="rounded-xl border border-white/10 bg-white/5 p-4">
-                  <div className="font-medium text-white">{profile.display_name}</div>
-                  <div className="text-sm text-cyan-200/80">@{profile.username}</div>
-                  <button
-                    onClick={() => void sendFriendRequest(profile.user_id)}
-                    className="mt-3 rounded-lg bg-gradient-to-r from-cyan-500 to-purple-500 px-4 py-2 text-sm font-medium text-white"
-                  >
-                    Add Friend
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <div>
-              <h4 className="mb-3 text-white font-semibold">Your Friends</h4>
-              <div className="space-y-3">
-                {availableFriends.map((friend) => (
-                  <div key={friend.user_id} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-4">
-                    <div>
-                      <div className="font-medium text-white">{friend.display_name}</div>
-                      <div className="text-sm text-white/60">
-                        @{friend.username} {friend.is_online ? '• Online' : '• Offline'}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => void openDirectChat(friend.user_id)}
-                      className="rounded-lg bg-white/10 px-4 py-2 text-sm text-white"
-                    >
-                      Message
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeView === 'requests' && (
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-xl font-semibold text-white">Friend Requests</h3>
-              <p className="text-sm text-white/50">Accept requests to unlock direct messaging.</p>
-            </div>
-
-            <div className="space-y-3">
-              {receivedRequests.map((request) => {
-                const sender = profileMap.get(request.sender_id);
-                return (
-                  <div key={request.id} className="rounded-xl border border-white/10 bg-white/5 p-4">
-                    <div className="font-medium text-white">{sender?.display_name || sender?.username || 'Student'}</div>
-                    <div className="text-sm text-white/60">@{sender?.username || 'unknown'}</div>
-                    <div className="mt-3 flex gap-3">
-                      <button onClick={() => void acceptFriendRequest(request)} className="rounded-lg bg-green-500 px-4 py-2 text-sm text-white">Accept</button>
-                      <button onClick={() => void rejectFriendRequest(request.id)} className="rounded-lg bg-red-500/80 px-4 py-2 text-sm text-white">Reject</button>
-                    </div>
-                  </div>
-                );
-              })}
-              {receivedRequests.length === 0 && (
-                <div className="rounded-xl border border-dashed border-white/15 p-6 text-center text-white/50">
-                  No pending requests.
-                </div>
-              )}
-            </div>
-
-            <div>
-              <h4 className="mb-3 text-white font-semibold">Sent Requests</h4>
-              <div className="space-y-3">
-                {sentRequests.map((request) => {
-                  const receiver = profileMap.get(request.receiver_id);
-                  return (
-                    <div key={request.id} className="rounded-xl border border-white/10 bg-white/5 p-4 text-white/80">
-                      Waiting for {receiver?.display_name || receiver?.username || 'student'} to accept.
-                    </div>
-                  );
-                })}
-                {sentRequests.length === 0 && (
-                  <div className="rounded-xl border border-dashed border-white/15 p-6 text-center text-white/50">
-                    No outgoing requests.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeView === 'notifications' && (
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-xl font-semibold text-white">Notifications</h3>
-              <p className="text-sm text-white/50">Friend requests, accepts, and group chat updates.</p>
-            </div>
-            <div className="space-y-3">
-              {notifications.map((notification) => (
-                <button
-                  key={notification.id}
-                  onClick={() => void markNotificationRead(notification.id)}
-                  className={`w-full rounded-xl border p-4 text-left ${notification.is_read ? 'border-white/10 bg-white/5 text-white/70' : 'border-cyan-400/40 bg-cyan-500/10 text-white'}`}
-                >
-                  <div className="font-medium">{notification.title}</div>
-                  <div className="mt-1 text-sm opacity-80">{notification.body}</div>
-                </button>
-              ))}
-              {notifications.length === 0 && (
-                <div className="rounded-xl border border-dashed border-white/15 p-6 text-center text-white/50">
-                  No notifications yet.
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        {activeView === 'notifications' ? (
+          <NotificationsViewPanel
+            markNotificationRead={markNotificationRead}
+            notifications={notifications}
+          />
+        ) : null}
       </div>
     </div>
   );

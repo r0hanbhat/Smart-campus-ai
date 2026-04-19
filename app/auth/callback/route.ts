@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
+  const response = NextResponse.redirect(requestUrl.origin);
 
   if (code) {
     const cookieStore = await cookies();
@@ -16,11 +17,19 @@ export async function GET(request: Request) {
           get(name: string) {
             return cookieStore.get(name)?.value;
           },
+          set(name: string, value: string, options: Record<string, unknown>) {
+            cookieStore.set({ name, value, ...options });
+            response.cookies.set({ name, value, ...options });
+          },
+          remove(name: string, options: Record<string, unknown>) {
+            cookieStore.set({ name, value: '', ...options });
+            response.cookies.set({ name, value: '', ...options });
+          },
         },
       }
     );
     await supabase.auth.exchangeCodeForSession(code);
   }
 
-  return NextResponse.redirect(requestUrl.origin);
+  return response;
 }

@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Smart Campus AI
 
-## Getting Started
+Smart Campus AI is a Next.js 16 student hub for J.C. Bose University. It combines:
 
-First, run the development server:
+- AI-assisted study and campus support
+- events, clubs, reminders, and deadline tracking
+- a Supabase-backed social chat system
+- focus and attention analytics inside the app
+
+## Stack
+
+- Next.js 16.2
+- React 19.2
+- Supabase Auth, Postgres, and Realtime
+- Groq for assistant responses
+- Google Maps for campus navigation
+- Nodemailer for reminder and deadline email delivery
+
+## Project Structure
+
+- `app/page.tsx`: main authenticated dashboard shell
+- `app/components/CampusChatPanel.tsx`: realtime social and messaging UI
+- `app/api/chat/route.ts`: AI assistant endpoint
+- `app/api/dashboard-insights/route.ts`: derived student insight endpoint
+- `app/api/send-email/route.ts`: canonical reminder/deadline email endpoint
+- `app/api/reminder-jobs/`: sync and processor routes for durable scheduled reminder emails
+- `app/hooks/`: extracted client hooks for attention, state sync, and scheduling
+- `lib/server/`: server-side helpers for chat, Supabase access, insights, and email rendering
+- `lib/smart-campus/`: shared campus constants, sample data, types, and utilities
+- `supabase/chat_schema.sql`: chat/social schema and RLS policies
+- `supabase/user_state_schema.sql`: app state storage schema
+- `supabase/reminder_jobs_schema.sql`: durable reminder/deadline email job queue
+- `functions/`: legacy Firebase compatibility path, no longer the primary email backend
+
+## Local Setup
+
+1. Install dependencies:
+
+```bash
+npm install
+```
+
+2. Create `.env.local` with the required values:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+GROQ_API_KEY=
+GMAIL_USER=
+GMAIL_PASS=
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+REMINDER_JOB_SECRET=
+```
+
+3. Apply the SQL files in Supabase:
+
+- `supabase/chat_schema.sql`
+- `supabase/user_state_schema.sql`
+- `supabase/reminder_jobs_schema.sql`
+
+4. Start the app:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Scripts
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run dev
+npm run build
+npm run lint
+npm run test
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Architecture Notes
 
-## Learn More
+- The main app uses Supabase `user_state` for per-user dashboard state persistence.
+- Social chat data lives in dedicated relational tables with RLS in `supabase/chat_schema.sql`.
+- Next.js route handlers are the primary backend-for-frontend layer.
+- Reminder emails now standardize on `app/api/send-email/route.ts`, and scheduled delivery is synced into `reminder_jobs` for server-side processing.
+- Browser notifications are still best-effort client features, but scheduled reminder/deadline emails no longer depend on an open browser tab.
+- The root Next.js app no longer depends on Firebase packages; `functions/` remains a separate legacy fallback project only.
 
-To learn more about Next.js, take a look at the following resources:
+## Current Priorities
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Continue breaking large client surfaces like `app/page.tsx` and `CampusChatPanel.tsx` into smaller components.
+- Decide whether the legacy `functions/` Firebase project should be retained, archived, or removed entirely.
