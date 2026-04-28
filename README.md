@@ -58,6 +58,7 @@ REMINDER_JOB_SECRET=
 - `supabase/chat_schema.sql`
 - `supabase/user_state_schema.sql`
 - `supabase/reminder_jobs_schema.sql`
+- `supabase/role_panels_schema.sql`
 
 4. Start the app:
 

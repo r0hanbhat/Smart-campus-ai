@@ -19,6 +19,9 @@
 
 # production
 /build
+/build-js-check
+/build-js-check-2
+/build-webpack-check
 
 # misc
 .DS_Store

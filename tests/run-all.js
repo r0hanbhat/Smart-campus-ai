@@ -1,0 +1,11 @@
+import './chat-assistant.test.js';
+import './attention-utils.test.js';
+import './attendance-utils.test.js';
+import './dashboard-insights.test.js';
+import './issues.test.js';
+import './planner-utils.test.js';
+import './reminder-jobs.test.js';
+import './reminder-utils.test.js';
+import './roles.test.js';
+import './schema-compat.test.js';
+import './schema-table-compat.test.js';
