@@ -4,16 +4,15 @@ import { cookies } from 'next/headers';
 
 const EDITABLE_STATUSES = ['REJECTED_BY_COORDINATOR', 'REJECTED_BY_ADMIN'];
 
-function getClubSession() {
-  const cookieStore = cookies();
+async function getSessionAndClient() {
+  const cookieStore = await cookies();
   const raw = cookieStore.get('club_session')?.value;
-  if (!raw) return null;
-  try { return JSON.parse(raw); } catch { return null; }
-}
+  if (!raw) return { session: null, supabase: null };
+  let session;
+  try { session = JSON.parse(raw); } catch { return { session: null, supabase: null }; }
+  if (!session?.club_id) return { session: null, supabase: null };
 
-function createAdminClient() {
-  const cookieStore = cookies();
-  return createServerClient(
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY,
     {
@@ -25,23 +24,22 @@ function createAdminClient() {
       },
     }
   );
+  return { session, supabase };
 }
 
 // PUT /api/clubs/events/[id] — edit a rejected event and re-submit
 export async function PUT(request, { params }) {
   try {
-    const session = getClubSession();
-    if (!session?.club_id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { session, supabase } = await getSessionAndClient();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = params;
-    const supabase = createAdminClient();
 
-    // Verify ownership and editability
     const { data: existing } = await supabase
       .from('events')
       .select('id, club_id, status, version')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (!existing) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     if (existing.club_id !== session.club_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -73,6 +71,7 @@ export async function PUT(request, { params }) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ event: updated });
   } catch (err) {
+    console.error('Club event PUT error:', err);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
@@ -80,17 +79,16 @@ export async function PUT(request, { params }) {
 // DELETE /api/clubs/events/[id] — withdraw event
 export async function DELETE(request, { params }) {
   try {
-    const session = getClubSession();
-    if (!session?.club_id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { session, supabase } = await getSessionAndClient();
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = params;
-    const supabase = createAdminClient();
 
     const { data: existing } = await supabase
       .from('events')
       .select('id, club_id, status')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (!existing) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
     if (existing.club_id !== session.club_id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -104,6 +102,7 @@ export async function DELETE(request, { params }) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ withdrawn: true });
   } catch (err) {
+    console.error('Club event DELETE error:', err);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

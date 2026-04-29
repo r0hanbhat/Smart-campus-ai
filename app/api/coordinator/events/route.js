@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/server/supabase';
+import { getAuthenticatedUser, createSupabaseServiceRoleClient } from '@/lib/server/supabase';
 
-// GET /api/coordinator/events
+// GET /api/coordinator/events — pending events for coordinator review
 export async function GET() {
   try {
-    const { user, supabase, error: authError } = await getAuthenticatedUser();
+    const { user, error: authError } = await getAuthenticatedUser();
     if (authError || !user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { data: events, error } = await supabase
+    // Use service role to bypass RLS on events table
+    const serviceClient = createSupabaseServiceRoleClient();
+
+    const { data: events, error } = await serviceClient
       .from('events')
       .select(`
         *,

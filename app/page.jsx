@@ -1149,7 +1149,7 @@ export default function Home() {
             <p className="mt-5 max-w-2xl text-sm leading-7 text-white/70 sm:text-base">
               Student, teacher, and admin access each have their own flow now. Use the role cards to open the exact login or signup page you need.
             </p>
-            <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Link href="/auth?role=student&mode=signup" className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5 transition hover:-translate-y-1 hover:bg-white/10">
                 <div className="text-xs uppercase tracking-[0.2em] text-cyan-200/70">Student</div>
                 <div className="mt-3 text-xl font-semibold text-white">Student Signup</div>
@@ -1164,6 +1164,11 @@ export default function Home() {
                 <div className="text-xs uppercase tracking-[0.2em] text-amber-200/80">Admin</div>
                 <div className="mt-3 text-xl font-semibold text-white">Admin Login</div>
                 <p className="mt-2 text-sm leading-6 text-white/65">Open the admin login screen for the provisioned account and assigned Admin ID.</p>
+              </Link>
+              <Link href="/auth?role=club" className="rounded-[1.5rem] border border-purple-300/20 bg-purple-500/10 p-5 transition hover:-translate-y-1 hover:bg-purple-500/15">
+                <div className="text-xs uppercase tracking-[0.2em] text-purple-200/80">Club</div>
+                <div className="mt-3 text-xl font-semibold text-white">Club Login</div>
+                <p className="mt-2 text-sm leading-6 text-white/65">Sign in with your Club Login ID and password to submit and track event proposals.</p>
               </Link>
             </div>
           </div>
@@ -1192,6 +1197,13 @@ export default function Home() {
                 </div>
                 <span className="text-amber-300">Open</span>
               </Link>
+              <Link href="/auth?role=club" className="flex items-center justify-between rounded-[1.3rem] border border-purple-400/20 bg-purple-500/10 px-5 py-4 transition hover:bg-purple-500/15">
+                <div>
+                  <div className="text-sm font-semibold text-white">Club Login</div>
+                  <div className="mt-1 text-sm text-white/60">Sign in with your Club Login ID to submit and manage event proposals.</div>
+                </div>
+                <span className="text-purple-300">Open</span>
+              </Link>
             </div>
             <div className="mt-8 rounded-[1.4rem] border border-white/10 bg-white/5 p-5">
               <div className="text-sm font-semibold text-white">What each role can do</div>
@@ -1199,6 +1211,7 @@ export default function Home() {
                 <div>Students: planning, reminders, clubs, deadlines, events, campus navigation, and chat.</div>
                 <div>Teachers: course management, announcements, lesson plans, grading, and student progress.</div>
                 <div>Admins: teacher approval, session visibility, user oversight, and audit monitoring.</div>
+                <div>Clubs: submit event proposals, track coordinator and admin approval status.</div>
               </div>
             </div>
           </div>

@@ -2,15 +2,14 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
-function getClubSession() {
-  const cookieStore = cookies();
+async function getClubSession() {
+  const cookieStore = await cookies();
   const raw = cookieStore.get('club_session')?.value;
   if (!raw) return null;
   try { return JSON.parse(raw); } catch { return null; }
 }
 
-function createAdminClient() {
-  const cookieStore = cookies();
+function createAdminClient(cookieStore) {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -28,10 +27,14 @@ function createAdminClient() {
 // GET /api/clubs/events — list own club's events
 export async function GET() {
   try {
-    const session = getClubSession();
+    const cookieStore = await cookies();
+    const raw = cookieStore.get('club_session')?.value;
+    if (!raw) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    let session;
+    try { session = JSON.parse(raw); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
     if (!session?.club_id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const supabase = createAdminClient();
+    const supabase = createAdminClient(cookieStore);
     const { data: events, error } = await supabase
       .from('events')
       .select(`*, approvals:event_approvals(actor_role, action, reason, acted_at)`)
@@ -41,6 +44,7 @@ export async function GET() {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ events: events || [] });
   } catch (err) {
+    console.error('Club events GET error:', err);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }
@@ -48,7 +52,11 @@ export async function GET() {
 // POST /api/clubs/events — submit new event proposal
 export async function POST(request) {
   try {
-    const session = getClubSession();
+    const cookieStore = await cookies();
+    const raw = cookieStore.get('club_session')?.value;
+    if (!raw) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    let session;
+    try { session = JSON.parse(raw); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
     if (!session?.club_id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
@@ -58,7 +66,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'title, proposed_date, time_start, time_end are required' }, { status: 400 });
     }
 
-    const supabase = createAdminClient();
+    const supabase = createAdminClient(cookieStore);
     const { data: event, error } = await supabase
       .from('events')
       .insert({
@@ -82,6 +90,7 @@ export async function POST(request) {
 
     return NextResponse.json({ event }, { status: 201 });
   } catch (err) {
+    console.error('Club events POST error:', err);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

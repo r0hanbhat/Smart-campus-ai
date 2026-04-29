@@ -3,6 +3,22 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 
+// GET /api/clubs/login — returns current club session info
+export async function GET() {
+  try {
+    const cookieStore = await cookies();
+    const raw = cookieStore.get('club_session')?.value;
+    if (!raw) return NextResponse.json({ club: null }, { status: 401 });
+
+    const session = JSON.parse(raw);
+    if (!session?.club_id) return NextResponse.json({ club: null }, { status: 401 });
+
+    return NextResponse.json({ club: session });
+  } catch {
+    return NextResponse.json({ club: null }, { status: 401 });
+  }
+}
+
 // POST /api/clubs/login
 export async function POST(request) {
   try {
@@ -11,7 +27,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'login_id and password are required' }, { status: 400 });
     }
 
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -27,7 +43,6 @@ export async function POST(request) {
       }
     );
 
-    // Fetch club by login_id (using service role to bypass RLS)
     const { data: club, error } = await supabase
       .from('clubs')
       .select('id, club_name, login_id, password_hash, coordinator_id')
@@ -43,11 +58,9 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    // Return club session data (stored in client localStorage/cookie by the portal)
     const { password_hash: _omit, ...safeClub } = club;
     const response = NextResponse.json({ club: safeClub });
 
-    // Set a simple HTTP-only session cookie
     response.cookies.set('club_session', JSON.stringify({ club_id: club.id, club_name: club.club_name }), {
       httpOnly: true,
       sameSite: 'lax',
@@ -59,4 +72,11 @@ export async function POST(request) {
   } catch (err) {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
+}
+
+// DELETE /api/clubs/login — logout
+export async function DELETE() {
+  const response = NextResponse.json({ ok: true });
+  response.cookies.set('club_session', '', { maxAge: 0, path: '/' });
+  return response;
 }

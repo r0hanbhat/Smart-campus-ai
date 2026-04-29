@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/server/supabase';
+import { getAuthenticatedUser, createSupabaseServiceRoleClient } from '@/lib/server/supabase';
 
 // GET /api/admin/events
 export async function GET(request) {
@@ -20,7 +20,10 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const all = searchParams.get('all') === 'true';
 
-    let query = supabase
+    // Use service role to bypass RLS on events table
+    const serviceClient = createSupabaseServiceRoleClient();
+
+    let query = serviceClient
       .from('events')
       .select(`
         *,

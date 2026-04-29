@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/server/supabase';
+import { getAuthenticatedUser, createSupabaseServiceRoleClient } from '@/lib/server/supabase';
 
 // POST /api/admin/events/[id]/review
 export async function POST(request, { params }) {
@@ -17,7 +17,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Admin access required.' }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const { action, reason } = await request.json();
 
     if (!['approve', 'reject'].includes(action)) {
@@ -27,7 +27,10 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Rejection reason is required' }, { status: 400 });
     }
 
-    const { data: event } = await supabase
+    // Use service role to bypass RLS
+    const serviceClient = createSupabaseServiceRoleClient();
+
+    const { data: event } = await serviceClient
       .from('events')
       .select('id, status')
       .eq('id', id)
@@ -41,7 +44,7 @@ export async function POST(request, { params }) {
     const newStatus = action === 'approve' ? 'APPROVED' : 'REJECTED_BY_ADMIN';
     const isPublished = action === 'approve';
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await serviceClient
       .from('events')
       .update({
         status: newStatus,
@@ -52,7 +55,7 @@ export async function POST(request, { params }) {
 
     if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
 
-    await supabase.from('event_approvals').insert({
+    await serviceClient.from('event_approvals').insert({
       event_id: id,
       actor_id: user.id,
       actor_role: 'admin',

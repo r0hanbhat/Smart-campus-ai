@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/server/supabase';
+import { getAuthenticatedUser, createSupabaseServiceRoleClient } from '@/lib/server/supabase';
 
 // POST /api/coordinator/events/[id]/review
 export async function POST(request, { params }) {
   try {
-    const { user, supabase, error: authError } = await getAuthenticatedUser();
+    const { user, error: authError } = await getAuthenticatedUser();
     if (authError || !user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { id } = params;
+    const { id } = await params;
     const { action, reason } = await request.json();
 
     if (!['approve', 'reject'].includes(action)) {
@@ -17,7 +17,10 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Rejection reason is required' }, { status: 400 });
     }
 
-    const { data: event } = await supabase
+    // Use service role to bypass RLS
+    const serviceClient = createSupabaseServiceRoleClient();
+
+    const { data: event } = await serviceClient
       .from('events')
       .select('id, status, club_id')
       .eq('id', id)
@@ -30,7 +33,7 @@ export async function POST(request, { params }) {
 
     const newStatus = action === 'approve' ? 'APPROVED_BY_COORDINATOR' : 'REJECTED_BY_COORDINATOR';
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await serviceClient
       .from('events')
       .update({
         status: newStatus,
@@ -40,7 +43,7 @@ export async function POST(request, { params }) {
 
     if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
 
-    await supabase.from('event_approvals').insert({
+    await serviceClient.from('event_approvals').insert({
       event_id: id,
       actor_id: user.id,
       actor_role: 'coordinator',

@@ -34,6 +34,20 @@ const ROLE_PORTAL_COPY = {
         loginLabel: 'Admin Login',
         signupLabel: 'Admin Setup Only',
     },
+    club: {
+        badge: 'Club Portal',
+        title: 'Submit and track event proposals',
+        description: 'Clubs sign in with their unique Club Login ID and password. Events go through coordinator and admin approval before being published.',
+        accent: 'from-purple-400 to-fuchsia-300',
+        loginLabel: 'Club Login',
+        signupLabel: 'Club accounts are created by Admin only',
+    },
+};
+
+const ROLE_MISMATCH_MESSAGES = {
+    student: 'This account is not a student account. Please use the correct portal.',
+    teacher: 'This account is not a teacher account. Please use the Teacher Portal.',
+    admin: 'This account is not the admin account. Please use the Admin Portal.',
 };
 
 function generateDemoOtp() {
@@ -68,6 +82,8 @@ function AuthPageContent() {
     const [employeeIdImageData, setEmployeeIdImageData] = useState('');
     const [employeeIdImageName, setEmployeeIdImageName] = useState('');
     const [adminId, setAdminId] = useState('');
+    const [clubLoginId, setClubLoginId] = useState('');
+    const [clubPassword, setClubPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
     const { signIn, signUp, signOut } = useAuth();
@@ -77,6 +93,7 @@ function AuthPageContent() {
 
     const isTeacherSignup = !isLogin && selectedRole === 'teacher';
     const isAdminMode = selectedRole === 'admin';
+    const isClubMode = selectedRole === 'club';
 
     useEffect(() => {
         const requestedRole = searchParams.get('role');
@@ -158,6 +175,28 @@ function AuthPageContent() {
         setLoading(true);
         setMessage('');
         try {
+            // Club login — uses separate credential system
+            if (isClubMode) {
+                if (!clubLoginId.trim() || !clubPassword.trim()) {
+                    setMessage('Error: Enter your Club Login ID and password.');
+                    setLoading(false);
+                    return;
+                }
+                const res = await fetch('/api/clubs/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ login_id: clubLoginId.trim(), password: clubPassword }),
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    setMessage(`Error: ${data.error || 'Invalid club credentials.'}`);
+                } else {
+                    router.push('/club-portal');
+                }
+                setLoading(false);
+                return;
+            }
+
             if (isLogin) {
                 if (isAdminMode && !adminId.trim()) {
                     setMessage('Error: Enter the Admin ID to continue.');
@@ -175,6 +214,14 @@ function AuthPageContent() {
                 else if (isAdminMode && data.user?.user_metadata?.adminId && data.user.user_metadata.adminId !== adminId.trim()) {
                     await signOut();
                     setMessage('Error: The Admin ID does not match this account.');
+                }
+                else if (selectedRole === 'teacher' && data.user?.user_metadata?.role !== 'teacher') {
+                    await signOut();
+                    setMessage('Error: ' + ROLE_MISMATCH_MESSAGES.teacher);
+                }
+                else if (selectedRole === 'student' && data.user?.user_metadata?.role !== 'student') {
+                    await signOut();
+                    setMessage('Error: ' + ROLE_MISMATCH_MESSAGES.student);
                 }
                 else {
                     router.push('/');
@@ -298,6 +345,7 @@ function AuthPageContent() {
                                 <div>Students: campus planner, events, clubs, deadlines, chat</div>
                                 <div>Teachers: courses, assignments, grading, progress, lesson plans, messaging</div>
                                 <div>Admin: teacher review queue, users, monitoring, sessions, audit trails</div>
+                                <div>Clubs: submit event proposals, track approval status</div>
                             </div>
                         </div>
                     </div>
@@ -359,6 +407,44 @@ function AuthPageContent() {
                         ) : null}
                     </div>
 
+                    {/* Club login — uses separate credential system, NOT Supabase Auth */}
+                    {isClubMode ? (
+                        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+                            <div className="rounded-[1.4rem] border border-purple-400/20 bg-purple-500/10 p-4 text-sm text-purple-100">
+                                Club accounts use a separate system — not email/password. Sign in with your assigned Club Login ID and password.
+                            </div>
+                            <div>
+                                <label className="mb-2 block text-sm font-medium text-white">Club Login ID</label>
+                                <input
+                                    type="text"
+                                    value={clubLoginId}
+                                    onChange={(e) => setClubLoginId(e.target.value)}
+                                    placeholder="e.g. cs_club"
+                                    className="campus-input w-full rounded-[1rem] px-4 py-3"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="mb-2 block text-sm font-medium text-white">Password</label>
+                                <input
+                                    type="password"
+                                    value={clubPassword}
+                                    onChange={(e) => setClubPassword(e.target.value)}
+                                    placeholder="Club password"
+                                    className="campus-input w-full rounded-[1rem] px-4 py-3"
+                                    required
+                                />
+                            </div>
+                            {message ? (
+                                <div className={`rounded-[1rem] px-4 py-3 text-sm ${message.startsWith('Error:') ? 'border border-red-400/30 bg-red-500/10 text-red-100' : 'border border-emerald-400/30 bg-emerald-500/10 text-emerald-100'}`}>
+                                    {message}
+                                </div>
+                            ) : null}
+                            <button type="submit" disabled={loading} className="w-full rounded-[1rem] bg-gradient-to-r from-purple-500 to-fuchsia-400 px-5 py-3 font-semibold text-white disabled:opacity-50">
+                                {loading ? 'Signing in…' : 'Sign in as Club'}
+                            </button>
+                        </form>
+                    ) : (
                     <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                         {!isLogin ? (
                             <>
@@ -463,13 +549,17 @@ function AuthPageContent() {
                             {loading ? 'Loading...' : isLogin ? `Login as ${selectedRole}` : `Create ${selectedRole} account`}
                         </button>
                     </form>
+                    )} {/* end isClubMode ternary */}
 
+                    {!isClubMode && (
                     <p className="mt-6 text-center text-sm text-white/60">
                         {isLogin ? "Don't have an account? " : 'Already have an account? '}
                         <button onClick={() => setIsLogin((current) => !current)} className="text-cyan-300 hover:underline">
                             {isLogin ? 'Sign Up' : 'Login'}
                         </button>
                     </p>
+                    )}
+
                 </div>
             </div>
         </div>
