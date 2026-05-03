@@ -51,3 +51,5 @@ node_modules/
 build_results.txt
 lint_results.txt
 lint_results_utf8.txt
+
+.vercel
