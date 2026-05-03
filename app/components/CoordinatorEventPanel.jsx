@@ -116,7 +116,10 @@ export default function CoordinatorEventPanel() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const t = setTimeout(() => void load(), 0);
+    return () => clearTimeout(t);
+  }, [load]);
 
   const handleAction = (eventId) => {
     setEvents(prev => prev.filter(e => e.id !== eventId));

@@ -1460,6 +1460,10 @@ export default function Home() {
                           disabled={event.user_registered}
                           onClick={async () => {
                             if (event.user_registered) return;
+                            if (!userProfile?.roll_number || !userProfile?.course || !userProfile?.branch) {
+                              alert("Please complete your profile (roll no, course, branch) in the Profile tab to register for events.");
+                              return;
+                            }
                             const res = await fetch(`/api/events/${event.id}/register`, { method: 'POST' });
                             if (res.ok) {
                               setClubEventsData(prev => ({
@@ -1509,8 +1513,27 @@ export default function Home() {
                             <div>🏛️ {event.club?.club_name}</div>
                             <div>👥 {event.registration_count} registered</div>
                           </div>
-                          {event.user_registered && (
+                          {event.user_registered ? (
                             <div className="rounded-[1rem] bg-emerald-500/15 border border-emerald-400/25 px-4 py-2 text-sm text-emerald-300 text-center">✓ You are registered</div>
+                          ) : !event.is_past && (
+                            <button
+                              onClick={async () => {
+                                if (!userProfile?.roll_number || !userProfile?.course || !userProfile?.branch) {
+                                  alert("Please complete your profile (roll no, course, branch) in the Profile tab to register for events.");
+                                  return;
+                                }
+                                const res = await fetch(`/api/events/${event.id}/register`, { method: 'POST' });
+                                if (res.ok) {
+                                  setClubEventsData(prev => ({
+                                    ...prev,
+                                    upcoming_live: prev.upcoming_live.map(e => e.id === event.id ? { ...e, user_registered: true, registration_count: e.registration_count + 1 } : e),
+                                  }));
+                                }
+                              }}
+                              className="w-full py-2.5 rounded-[1rem] font-medium text-sm transition bg-gradient-to-r from-cyan-500 to-purple-500 text-white hover:opacity-90"
+                            >
+                              Register Now
+                            </button>
                           )}
                         </div>
                       );

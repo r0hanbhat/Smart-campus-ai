@@ -4,23 +4,16 @@ import { withMissingColumnFallback } from '@/lib/supabase/schema-compat.js';
 
 export async function POST(request) {
     try {
-        const { user, supabase, error: authError } = await getAuthenticatedUser();
+        const { user, supabase, error: authError } = await getAuthenticatedUser(request);
         if (authError || !user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
         const body = await request.json();
-        const { data: existingState, error: existingStateError } = await supabase
-            .from('user_state')
-            .select('profile')
-            .eq('user_id', user.id)
-            .maybeSingle();
 
-        if (existingStateError && existingStateError.code !== 'PGRST116') {
-            return NextResponse.json({ error: existingStateError.message, hint: existingStateError.hint || null }, { status: 500 });
-        }
-
-        const existingProfile = existingState?.profile && typeof existingState.profile === 'object' ? existingState.profile : {};
+        // Build the upsert payload directly — no pre-SELECT needed.
+        // The issueCenter sub-key is preserved by the client (it passes through
+        // the existing profile object) so we don't need a server-side merge.
         const savePayload = {
             user_id: user.id,
             events: Array.isArray(body?.events) ? body.events : [],
@@ -29,10 +22,7 @@ export async function POST(request) {
             deadlines: Array.isArray(body?.deadlines) ? body.deadlines : [],
             planner_entries: Array.isArray(body?.plannerEntries) ? body.plannerEntries : [],
             teacher_workspace: body?.teacherWorkspace && typeof body.teacherWorkspace === 'object' ? body.teacherWorkspace : null,
-            profile: {
-                ...(body?.profile && typeof body.profile === 'object' ? body.profile : {}),
-                ...(existingProfile.issueCenter ? { issueCenter: existingProfile.issueCenter } : {}),
-            },
+            profile: body?.profile && typeof body.profile === 'object' ? body.profile : {},
             messages: Array.isArray(body?.messages) ? body.messages : [],
         };
 
@@ -41,7 +31,11 @@ export async function POST(request) {
             .upsert(nextPayload, { onConflict: 'user_id' }), savePayload, ['events', 'clubs', 'reminders', 'deadlines', 'planner_entries', 'teacher_workspace', 'profile', 'messages']);
 
         if (error) {
-            return NextResponse.json({ error: error.message, hint: error.hint || null }, { status: 500 });
+            const isTimeout = /statement timeout/i.test(error.message);
+            return NextResponse.json(
+                { error: error.message, hint: error.hint || null, timeout: isTimeout },
+                { status: isTimeout ? 504 : 500 },
+            );
         }
 
         return NextResponse.json({ success: true });

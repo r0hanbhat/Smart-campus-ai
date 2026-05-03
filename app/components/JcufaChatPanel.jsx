@@ -68,7 +68,10 @@ function AckTally({ messageId, initialCount }) {
     if (data.acknowledged) setDetail(data); // position holder gets full detail
   }, [messageId]);
 
-  useEffect(() => { void fetchDetail(); }, [fetchDetail]);
+  useEffect(() => {
+    const t = setTimeout(() => void fetchDetail(), 0);
+    return () => clearTimeout(t);
+  }, [fetchDetail]);
 
   return (
     <>

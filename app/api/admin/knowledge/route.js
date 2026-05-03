@@ -49,13 +49,28 @@ export async function POST(request) {
 
             const results = { inserted: 0, failed: 0, errors: [] };
 
+            const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
             for (let i = 0; i < textChunks.length; i++) {
                 const chunk = textChunks[i];
-                const embedding = await generateEmbedding(chunk);
+
+                // Small delay between HF API calls to avoid free-tier rate limiting
+                if (i > 0) await sleep(600);
+
+                // Retry up to 2 times on embedding failure (HF model may be loading)
+                let embedding = null;
+                for (let attempt = 0; attempt < 3; attempt++) {
+                    embedding = await generateEmbedding(chunk);
+                    if (embedding) break;
+                    if (attempt < 2) {
+                        console.warn(`[Knowledge] Chunk ${i} embed attempt ${attempt + 1} failed, retrying in 2s...`);
+                        await sleep(2000);
+                    }
+                }
 
                 if (!embedding) {
                     results.failed++;
-                    results.errors.push(`Chunk ${i}: embedding failed`);
+                    results.errors.push(`Chunk ${i}: embedding failed after 3 attempts (HuggingFace rate limit or model unavailable)`);
                     continue;
                 }
 
@@ -73,7 +88,7 @@ export async function POST(request) {
 
                 if (insertError) {
                     results.failed++;
-                    results.errors.push(`Chunk ${i}: ${insertError.message}`);
+                    results.errors.push(`Chunk ${i}: DB insert failed — ${insertError.message}`);
                 } else {
                     results.inserted++;
                 }

@@ -206,7 +206,10 @@ function BrowseChunksTab() {
         setLoading(false);
     }, [page, category]);
 
-    useEffect(() => { void load(); }, [load]);
+    useEffect(() => {
+        const t = setTimeout(() => void load(), 0);
+        return () => clearTimeout(t);
+    }, [load]);
 
     const handleDelete = async (id) => {
         setDeleting(id);
@@ -243,7 +246,7 @@ function BrowseChunksTab() {
                 <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-20 animate-pulse rounded-[1rem] bg-white/5" />)}</div>
             ) : chunks.length === 0 ? (
                 <div className="rounded-[1rem] border border-dashed border-white/10 py-12 text-center text-sm text-white/45">
-                    No knowledge chunks yet. Use the "Add Knowledge" tab to ingest documents.
+                    No knowledge chunks yet. Use the &quot;Add Knowledge&quot; tab to ingest documents.
                 </div>
             ) : (
                 <div className="space-y-2">

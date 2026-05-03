@@ -1,8 +1,17 @@
 'use client';
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { createSupabaseAuthHeaders } from '@/lib/supabase/auth-fetch.js';
 import { CampusChatSidebar, ChatViewPanel, FriendsViewPanel, NotificationsViewPanel, RequestsViewPanel, } from './campus-chat/panels.jsx';
 import { buildFallbackUsername, createSystemMessage, generateDirectPairKey, getFriendId, GLOBAL_CHAT_SLUG, getProfileHeading, getProfileSubheading, isDuplicateKeyError, isNoRowsError, normalizeUsernameSearch, sortMessagesByCreatedAt, upsertByKey, } from './campus-chat/shared.js';
+
+function selectCanonicalGlobalConversation(conversationRows) {
+    const globalRows = (conversationRows ?? [])
+        .filter((conversation) => conversation.type === 'global' || conversation.slug === GLOBAL_CHAT_SLUG)
+        .sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    return globalRows[0] ?? null;
+}
+
 export default function CampusChatPanel({ userId, userEmail }) {
     const [supabase] = useState(() => createClient());
     const [profiles, setProfiles] = useState([]);
@@ -32,15 +41,14 @@ export default function CampusChatPanel({ userId, userEmail }) {
     const [isLeavingGroup, setIsLeavingGroup] = useState(false);
     const [isUnfriending, setIsUnfriending] = useState(false);
     const [chatError, setChatError] = useState(null);
-    const [hiddenConversationIds, setHiddenConversationIds] = useState([]);
-    const [hasLoadedHiddenConversationIds, setHasLoadedHiddenConversationIds] = useState(false);
     const messagesContainerRef = useRef(null);
     const selectedConversationIdRef = useRef(null);
     const conversationIdsRef = useRef([]);
     const refreshRequestIdRef = useRef(0);
     const groupCreationInFlightRef = useRef(false);
     const pendingGlobalReadIdsRef = useRef(new Set());
-    const hiddenConversationStorageKey = `campus-chat-hidden-conversations:${userId}`;
+    const conversationsRef = useRef([]);
+    const visibleConversationIdsRef = useRef(new Set());
     const profileMap = useMemo(() => new Map(profiles.map((profile) => [profile.user_id, profile])), [profiles]);
     const friendIds = useMemo(() => Array.from(new Set([
         ...friendships
@@ -92,15 +100,20 @@ export default function CampusChatPanel({ userId, userEmail }) {
             return availableFriends;
         return availableFriends.filter((friend) => friend.username.toLowerCase().includes(lowered) || friend.display_name.toLowerCase().includes(lowered));
     }, [availableFriends, searchTerm]);
-    const visibleConversations = useMemo(() => conversations.filter((conversation) => {
-        if (conversation.type === 'global')
-            return true;
-        if (hiddenConversationIds.includes(conversation.id))
-            return false;
-        return conversationMembers.some((member) => member.conversation_id === conversation.id &&
-            member.user_id === userId &&
-            member.member_status !== 'left');
-    }), [conversationMembers, conversations, hiddenConversationIds, userId]);
+    const canonicalGlobalConversationId = useMemo(() => selectCanonicalGlobalConversation(conversations)?.id ?? null, [conversations]);
+    const visibleConversations = useMemo(() => {
+        return conversations.filter((conversation) => {
+            if (conversation.type === 'global') {
+                return conversation.id === canonicalGlobalConversationId;
+            }
+            return conversationMembers.some((member) =>
+                member.conversation_id === conversation.id &&
+                member.user_id === userId &&
+                member.member_status !== 'left'
+            );
+        });
+    }, [canonicalGlobalConversationId, conversationMembers, conversations, userId]);
+
     const sortedConversations = useMemo(() => {
         return [...visibleConversations].sort((a, b) => {
             if (a.type === 'global')
@@ -125,11 +138,9 @@ export default function CampusChatPanel({ userId, userEmail }) {
         : selectedConversation?.type === 'direct'
             ? Boolean(selectedDirectChatPartnerId && friendIds.includes(selectedDirectChatPartnerId))
             : Boolean(selectedConversationId);
-    const selectedGroupConversationId = selectedConversation?.type === 'group' ? selectedConversation.id : null;
     const selectedGroupMembers = useMemo(() => selectedConversation?.type === 'group'
         ? conversationMembers
-            .filter((member) => member.conversation_id === selectedConversation.id &&
-            member.member_status !== 'left')
+            .filter((member) => member.conversation_id === selectedConversation.id && member.member_status !== 'left')
             .map((member) => profileMap.get(member.user_id))
             .filter((profile) => Boolean(profile))
         : [], [conversationMembers, profileMap, selectedConversation]);
@@ -159,43 +170,51 @@ export default function CampusChatPanel({ userId, userEmail }) {
         const fallbackUsername = buildFallbackUsername(userEmail, userId);
         return `${userEmail.split('@')[0] || 'Student'} (@${fallbackUsername})`;
     };
-    const isMissingSchemaColumnError = (error, columnName) => Boolean(error?.message?.includes(`Could not find the '${columnName}' column`));
-    const addConversationMember = async (conversationId, memberId) => {
-        let { error } = await supabase
-            .from('conversation_members')
-            .upsert({
-            conversation_id: conversationId,
-            user_id: memberId,
-            is_creator: false,
-            member_status: 'active',
-            joined_at: new Date().toISOString(),
-            left_at: null,
-        }, {
-            onConflict: 'conversation_id,user_id',
-            ignoreDuplicates: false,
-        });
-        if (error &&
-            (isMissingSchemaColumnError(error, 'is_creator') ||
-                isMissingSchemaColumnError(error, 'member_status') ||
-                isMissingSchemaColumnError(error, 'left_at'))) {
-            const fallbackResult = await supabase
-                .from('conversation_members')
-                .upsert({
-                conversation_id: conversationId,
-                user_id: memberId,
-                joined_at: new Date().toISOString(),
-            }, {
-                onConflict: 'conversation_id,user_id',
-                ignoreDuplicates: false,
-            });
-            error = fallbackResult.error;
+    const loadConversationRecord = async (conversationId) => {
+        const { data, error } = await supabase
+            .from('conversations')
+            .select('*')
+            .eq('id', conversationId)
+            .maybeSingle();
+        if (error) {
+            console.error('Failed to load conversation record:', error.message);
+            return null;
         }
-        if (error && !isDuplicateKeyError(error)) {
-            console.error(`Failed to add member ${memberId} to conversation ${conversationId}:`, error.message);
-            return { ok: false, message: error.message };
-        }
-        return { ok: true, message: null };
+        return data ?? null;
     };
+    const mergeConversationIntoState = (conversation) => {
+        if (!conversation)
+            return;
+        setConversations((prev) => upsertByKey(prev, conversation, (entry) => entry.id));
+    };
+    const removeConversationFromState = (conversationId) => {
+        setConversations((prev) => prev.filter((conversation) => conversation.id !== conversationId));
+        setConversationMembers((prev) => prev.filter((member) => member.conversation_id !== conversationId));
+        setGroupInvitations((prev) => prev.filter((invitation) => invitation.conversation_id !== conversationId));
+        if (selectedConversationIdRef.current === conversationId) {
+            setMessages([]);
+        }
+    };
+    const addConversationMember = async (conversationId, memberId) => {
+        try {
+            const res = await fetch('/api/chat/add-member', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ memberId, conversationId }),
+            });
+            const data = await res.json();
+            if (!res.ok || !data.ok) {
+                console.error(`Failed to add member ${memberId} to conversation ${conversationId}:`, data?.message || res.statusText);
+                return { ok: false, message: data?.message || res.statusText };
+            }
+            return { ok: true, message: null };
+        }
+        catch (error) {
+            console.error(`Failed to add member ${memberId} to conversation ${conversationId}:`, error?.message || error);
+            return { ok: false, message: error?.message || String(error) };
+        }
+    };
+
     const inviteUserToGroup = async (conversationId, invitedUserId) => {
         const invitationId = crypto.randomUUID();
         const invitationTime = new Date().toISOString();
@@ -213,34 +232,23 @@ export default function CampusChatPanel({ userId, userEmail }) {
         if (invitationResult.error && !isDuplicateKeyError(invitationResult.error)) {
             return { ok: false, message: invitationResult.error.message };
         }
-        let memberResult = await supabase.from('conversation_members').upsert({
-            conversation_id: conversationId,
-            user_id: invitedUserId,
-            is_creator: false,
-            member_status: 'invited',
-            joined_at: invitationTime,
-        }, {
-            onConflict: 'conversation_id,user_id',
-            ignoreDuplicates: false,
+        // Use server API to insert conversation_members to avoid RLS issues
+        const addResp = await fetch('/api/chat/add-member', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ memberId: invitedUserId, conversationId, memberStatus: 'invited', isCreator: false }),
         });
-        if (memberResult.error &&
-            (isMissingSchemaColumnError(memberResult.error, 'is_creator') ||
-                isMissingSchemaColumnError(memberResult.error, 'member_status'))) {
-            memberResult = await supabase.from('conversation_members').upsert({
-                conversation_id: conversationId,
-                user_id: invitedUserId,
-                joined_at: invitationTime,
-            }, {
-                onConflict: 'conversation_id,user_id',
-                ignoreDuplicates: false,
-            });
-        }
-        if (memberResult.error && !isDuplicateKeyError(memberResult.error)) {
-            return { ok: false, message: memberResult.error.message };
+        const addData = await addResp.json();
+        if (!addResp.ok || !addData.ok) {
+            // If the failure is a duplicate-key like condition, continue; otherwise fail
+            const msg = addData?.message || addResp.statusText;
+            if (!msg || !msg.toLowerCase().includes('duplicate')) {
+                return { ok: false, message: msg };
+            }
         }
         return { ok: true, message: null };
     };
-    const loadMessages = async (conversationId) => {
+    const loadMessages = useCallback(async (conversationId) => {
         const { data, error } = await supabase
             .from('messages')
             .select('*')
@@ -254,12 +262,9 @@ export default function CampusChatPanel({ userId, userEmail }) {
         }
         setChatError(null);
         const nextMessages = (data ?? []);
-        const conversation = conversations.find((entry) => entry.id === conversationId);
-        setMessages(conversation?.type === 'global'
-            ? nextMessages.filter((message) => !persistedGlobalReadMessageIds.has(message.id))
-            : nextMessages);
+        setMessages(nextMessages);
         return true;
-    };
+    }, [supabase]);
     const flushPendingGlobalReadStatuses = useEffectEvent(async () => {
         const pendingIds = Array.from(pendingGlobalReadIdsRef.current);
         if (pendingIds.length === 0)
@@ -290,30 +295,32 @@ export default function CampusChatPanel({ userId, userEmail }) {
     };
     const ensureBaseRecords = async () => {
         const fallbackUsername = buildFallbackUsername(userEmail, userId);
-        const existingProfile = await supabase.from('profiles').select('*').eq('user_id', userId).maybeSingle();
-        if (!existingProfile.data) {
-            const { error } = await supabase.from('profiles').insert({
-                user_id: userId,
-                username: fallbackUsername,
-                display_name: userEmail.split('@')[0] || fallbackUsername,
-                is_online: true,
-            });
-            if (error) {
-                console.error('Failed to create profile:', error.message);
-            }
+        const authHeaders = await createSupabaseAuthHeaders(supabase);
+        const provisionResponse = await fetch('/api/profile/provision', {
+            method: 'POST',
+            headers: {
+                ...Object.fromEntries(authHeaders.entries()),
+                'Content-Type': 'application/json',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                email: userEmail,
+                fallbackUsername,
+                displayName: userEmail.split('@')[0] || fallbackUsername,
+                isOnline: true,
+                lastSeen: new Date().toISOString(),
+            }),
+        });
+        if (!provisionResponse.ok) {
+            const payload = await provisionResponse.json().catch(() => ({ error: 'Failed to provision profile.' }));
+            console.error('Failed to create profile:', payload.error || 'Failed to provision profile.');
         }
-        else {
-            await supabase
-                .from('profiles')
-                .update({ is_online: true, last_seen: new Date().toISOString() })
-                .eq('user_id', userId);
-        }
-        const globalConversationResult = await supabase
+        const globalConversationRowsResult = await supabase
             .from('conversations')
             .select('*')
             .eq('slug', GLOBAL_CHAT_SLUG)
-            .maybeSingle();
-        let globalConversation = globalConversationResult.data;
+            .order('id', { ascending: true });
+        let globalConversation = selectCanonicalGlobalConversation(globalConversationRowsResult.data);
         if (!globalConversation) {
             const { data, error } = await supabase.from('conversations').insert({
                 type: 'global',
@@ -327,9 +334,9 @@ export default function CampusChatPanel({ userId, userEmail }) {
                         .from('conversations')
                         .select('*')
                         .eq('slug', GLOBAL_CHAT_SLUG)
-                        .maybeSingle();
+                        .order('id', { ascending: true });
                     if (!retry.error) {
-                        globalConversation = retry.data;
+                        globalConversation = selectCanonicalGlobalConversation(retry.data);
                     }
                     else {
                         console.error('Failed to reload global conversation after duplicate key:', retry.error.message);
@@ -345,7 +352,7 @@ export default function CampusChatPanel({ userId, userEmail }) {
         }
         if (globalConversation) {
             const inserted = await addConversationMember(globalConversation.id, userId);
-            if (!inserted) {
+            if (!inserted || (typeof inserted === 'object' && !inserted.ok)) {
                 console.error('Failed to join global conversation.');
             }
         }
@@ -436,7 +443,7 @@ export default function CampusChatPanel({ userId, userEmail }) {
             setIsRefreshing(true);
         }
         await ensureBaseRecords();
-        const [profilesResult, requestResult, friendshipsResult, notificationsResult, globalConversationResult, globalReadStatusResult,] = await Promise.all([
+        const [profilesResult, requestResult, friendshipsResult, notificationsResult, globalConversationRowsResult, globalReadStatusResult,] = await Promise.all([
             supabase.from('profiles').select('*').order('display_name', { ascending: true }),
             supabase
                 .from('friend_requests')
@@ -453,7 +460,7 @@ export default function CampusChatPanel({ userId, userEmail }) {
                 .eq('user_id', userId)
                 .order('created_at', { ascending: false })
                 .limit(50),
-            supabase.from('conversations').select('*').eq('slug', GLOBAL_CHAT_SLUG).maybeSingle(),
+            supabase.from('conversations').select('*').eq('slug', GLOBAL_CHAT_SLUG).order('id', { ascending: true }),
             supabase.from('global_chat_read_status').select('*').eq('user_id', userId),
         ]);
         if (profilesResult.data)
@@ -473,7 +480,7 @@ export default function CampusChatPanel({ userId, userEmail }) {
             return;
         const memberRows = (membersResult.data ?? []);
         const conversationIds = new Set(memberRows.map((member) => member.conversation_id));
-        const globalConversation = globalConversationResult.data;
+        const globalConversation = selectCanonicalGlobalConversation(globalConversationRowsResult.data);
         if (globalConversation)
             conversationIds.add(globalConversation.id);
         let loadedConversations = [];
@@ -506,10 +513,11 @@ export default function CampusChatPanel({ userId, userEmail }) {
         setConversationMembers(allMembers);
         setGroupInvitations(loadedInvitations);
         setConversations(loadedConversations);
+        const canonicalGlobalConversation = selectCanonicalGlobalConversation(loadedConversations);
         const visibleConversationIds = new Set(loadedConversations
             .filter((conversation) => {
             if (conversation.type === 'global')
-                return true;
+                return conversation.id === canonicalGlobalConversation?.id;
             return allMembers.some((member) => member.conversation_id === conversation.id &&
                 member.user_id === userId &&
                 member.member_status !== 'left');
@@ -536,9 +544,6 @@ export default function CampusChatPanel({ userId, userEmail }) {
     const refreshChatDataEvent = useEffectEvent(() => {
         void refreshChatData();
     });
-    const loadMessagesEvent = useEffectEvent((conversationId) => {
-        void loadMessages(conversationId);
-    });
     useEffect(() => {
         refreshChatDataEvent();
         return () => {
@@ -559,36 +564,14 @@ export default function CampusChatPanel({ userId, userEmail }) {
         };
     }, [supabase, userId]);
     useEffect(() => {
-        const storedValue = window.localStorage.getItem(hiddenConversationStorageKey);
-        if (!storedValue) {
-            setHasLoadedHiddenConversationIds(true);
-            return;
-        }
-        try {
-            const parsedValue = JSON.parse(storedValue);
-            if (Array.isArray(parsedValue)) {
-                setHiddenConversationIds(parsedValue);
-            }
-        }
-        catch {
-            window.localStorage.removeItem(hiddenConversationStorageKey);
-        }
-        finally {
-            setHasLoadedHiddenConversationIds(true);
-        }
-    }, [hiddenConversationStorageKey]);
-    useEffect(() => {
-        if (!hasLoadedHiddenConversationIds)
-            return;
-        window.localStorage.setItem(hiddenConversationStorageKey, JSON.stringify(hiddenConversationIds));
-    }, [hasLoadedHiddenConversationIds, hiddenConversationIds, hiddenConversationStorageKey]);
-    useEffect(() => {
         selectedConversationIdRef.current = selectedConversationId;
         conversationIdsRef.current = conversations.map((conversation) => conversation.id);
+        conversationsRef.current = conversations;
+        visibleConversationIdsRef.current = new Set(visibleConversations.map((conversation) => conversation.id));
         if (!selectedConversationId)
             return;
-        loadMessagesEvent(selectedConversationId);
-    }, [conversations, selectedConversationId]);
+        void loadMessages(selectedConversationId);
+    }, [conversations, loadMessages, selectedConversationId, visibleConversations]);
     useEffect(() => {
         if (!selectedConversationId)
             return;
@@ -617,27 +600,30 @@ export default function CampusChatPanel({ userId, userEmail }) {
             }
         });
     }, [messages, persistedGlobalReadMessageIds, selectedConversation]);
+    // Keep the open conversation feeling live even if a realtime event is delayed.
     useEffect(() => {
         if (!selectedConversationId)
             return;
-        loadMessagesEvent(selectedConversationId);
+        void loadMessages(selectedConversationId);
         const intervalId = window.setInterval(() => {
-            loadMessagesEvent(selectedConversationId);
-        }, 2000);
+            if (document.visibilityState !== 'visible')
+                return;
+            void loadMessages(selectedConversationId);
+        }, 2500);
         return () => {
             window.clearInterval(intervalId);
         };
-    }, [selectedConversationId]);
+    }, [loadMessages, selectedConversationId]);
+    // Fallback sync only. Realtime subscriptions are the primary data path.
     useEffect(() => {
-        if (!selectedGroupConversationId)
-            return;
         const intervalId = window.setInterval(() => {
             refreshChatDataEvent();
-        }, 5000);
+        }, 60000);
         return () => {
             window.clearInterval(intervalId);
         };
-    }, [selectedGroupConversationId]);
+    }, []);
+
     const handleProfileChange = useEffectEvent((payload) => {
         const nextProfile = payload.new;
         const previousProfile = payload.old;
@@ -712,18 +698,21 @@ export default function CampusChatPanel({ userId, userEmail }) {
     const handleConversationStructureChange = useEffectEvent((payload) => {
         const nextRow = payload.new;
         const previousRow = payload.old;
-        const conversationId = nextRow?.conversation_id ?? nextRow?.id ?? previousRow?.conversation_id ?? previousRow?.id;
+        const conversationId = nextRow?.id ?? previousRow?.id;
         if (!conversationId)
             return;
         const isKnownConversation = conversationIdsRef.current.includes(conversationId);
         const isCreatedByCurrentUser = nextRow?.created_by === userId || previousRow?.created_by === userId;
         if (!isKnownConversation && !isCreatedByCurrentUser) {
-            const memberUserId = nextRow && 'user_id' in nextRow ? String(nextRow.user_id ?? '') : '';
-            const oldMemberUserId = previousRow && 'user_id' in previousRow ? String(previousRow.user_id ?? '') : '';
-            if (memberUserId !== userId && oldMemberUserId !== userId)
-                return;
+            return;
         }
-        void refreshChatData();
+        if (payload.eventType === 'DELETE') {
+            removeConversationFromState(conversationId);
+            return;
+        }
+        if (!nextRow)
+            return;
+        mergeConversationIntoState(nextRow);
     });
     const handleConversationMemberChange = useEffectEvent((payload) => {
         const nextMember = payload.new;
@@ -742,27 +731,36 @@ export default function CampusChatPanel({ userId, userEmail }) {
         if (payload.eventType === 'DELETE') {
             setConversationMembers((prev) => prev.filter((member) => !(member.conversation_id === conversationId && member.user_id === memberUserId)));
             if (affectsCurrentUserMembership) {
-                setConversations((prev) => prev.filter((conversation) => conversation.id !== conversationId));
-                setMessages((prev) => (isSelectedGroup ? [] : prev));
+                removeConversationFromState(conversationId);
                 if (isSelectedGroup) {
-                    const fallbackConversationId = conversations
+                    const fallbackConversationId = conversationsRef.current
                         .filter((conversation) => conversation.id !== conversationId)
                         .find((conversation) => conversation.type === 'global')?.id ??
-                        conversations.find((conversation) => conversation.id !== conversationId)?.id ??
+                        conversationsRef.current.find((conversation) => conversation.id !== conversationId)?.id ??
                         null;
                     setSelectedConversationId(fallbackConversationId);
                 }
-            }
-            if (isSelectedGroup) {
-                void refreshChatData();
             }
             return;
         }
         if (!nextMember)
             return;
         setConversationMembers((prev) => upsertByKey(prev, nextMember, (member) => `${member.conversation_id}:${member.user_id}`));
-        if (affectsCurrentUserMembership || isSelectedGroup) {
-            void refreshChatData();
+        if (affectsCurrentUserMembership && !conversationIdsRef.current.includes(conversationId)) {
+            void loadConversationRecord(conversationId).then((conversation) => {
+                if (!conversation)
+                    return;
+                mergeConversationIntoState(conversation);
+                if (nextMember.member_status !== 'left' && !selectedConversationIdRef.current) {
+                    setSelectedConversationId(conversation.id);
+                }
+            });
+        }
+        if (affectsCurrentUserMembership && nextMember.member_status === 'left') {
+            removeConversationFromState(conversationId);
+        }
+        if (selectedConversationIdRef.current === conversationId) {
+            void loadMessages(conversationId);
         }
     });
     const handleMessageChange = useEffectEvent((payload) => {
@@ -779,10 +777,6 @@ export default function CampusChatPanel({ userId, userEmail }) {
             }
             else if (nextMessage) {
                 setMessages((prev) => {
-                    const selectedConversationType = conversations.find((conversation) => conversation.id === targetMessage.conversation_id)?.type;
-                    if (selectedConversationType === 'global' && persistedGlobalReadMessageIds.has(nextMessage.id)) {
-                        return prev;
-                    }
                     return sortMessagesByCreatedAt(upsertByKey(prev, nextMessage, (message) => message.id));
                 });
             }
@@ -792,6 +786,9 @@ export default function CampusChatPanel({ userId, userEmail }) {
                 const current = prev.find((conversation) => conversation.id === targetMessage.conversation_id);
                 if (!current)
                     return prev;
+                if (current.type === 'global') {
+                    return prev;
+                }
                 return [
                     {
                         ...current,
@@ -800,6 +797,12 @@ export default function CampusChatPanel({ userId, userEmail }) {
                     ...prev.filter((conversation) => conversation.id !== current.id),
                 ];
             });
+            if (selectedConversationIdRef.current !== targetMessage.conversation_id &&
+                visibleConversationIdsRef.current.has(targetMessage.conversation_id)) {
+                void loadConversationRecord(targetMessage.conversation_id).then((conversation) => {
+                    mergeConversationIntoState(conversation);
+                });
+            }
         }
     });
     const handleGlobalReadStatusChange = useEffectEvent((payload) => {
@@ -829,7 +832,11 @@ export default function CampusChatPanel({ userId, userEmail }) {
             setGroupInvitations((prev) => upsertByKey(prev, nextInvitation, (invitation) => invitation.id));
         }
         if (targetInvitation.invited_user_id === userId || targetInvitation.invited_by === userId) {
-            void refreshChatData();
+            if (!conversationIdsRef.current.includes(targetInvitation.conversation_id)) {
+                void loadConversationRecord(targetInvitation.conversation_id).then((conversation) => {
+                    mergeConversationIntoState(conversation);
+                });
+            }
         }
     });
     useEffect(() => {
@@ -1059,7 +1066,6 @@ export default function CampusChatPanel({ userId, userEmail }) {
         const fallbackConversationId = remainingConversations.find((conversation) => conversation.type === 'global')?.id ??
             remainingConversations[0]?.id ??
             null;
-        setHiddenConversationIds((prev) => (prev.includes(conversationId) ? prev : [...prev, conversationId]));
         setConversations(remainingConversations);
         setConversationMembers((prev) => prev.filter((member) => member.conversation_id !== conversationId || member.user_id !== userId));
         setMessages((prev) => (selectedConversationIdRef.current === conversationId ? [] : prev));
@@ -1134,35 +1140,19 @@ export default function CampusChatPanel({ userId, userEmail }) {
         }
         setIsAddingGroupMember(true);
         try {
-            const isFriend = friendIds.includes(targetProfile.user_id);
-            if (isFriend) {
-                const added = await addConversationMember(selectedConversation.id, targetProfile.user_id);
-                if (!added.ok) {
-                    setChatError(`Couldn't add @${targetProfile.username} to the group.`);
-                    return;
-                }
+            const added = await addConversationMember(selectedConversation.id, targetProfile.user_id);
+            if (!added.ok) {
+                setChatError(`Couldn't add @${targetProfile.username}: ${added.message || 'unknown error'}`);
+                return;
             }
-            else {
-                const invited = await inviteUserToGroup(selectedConversation.id, targetProfile.user_id);
-                if (!invited.ok) {
-                    setChatError(`Couldn't invite @${targetProfile.username} to the group.`);
-                    return;
-                }
-                if (selectedConversation.group_status !== 'active') {
-                    await supabase
-                        .from('conversations')
-                        .update({ group_status: 'pending' })
-                        .eq('id', selectedConversation.id);
-                }
-            }
+            await postSystemMessage(selectedConversation.id, `${getCurrentUserLabel()} added ${getProfileHeading(targetProfile)} (@${targetProfile.username}) to the group.`);
             await supabase.from('notifications').insert({
                 user_id: targetProfile.user_id,
                 type: 'group_invite',
-                title: isFriend ? 'Added to a group chat' : 'Group invitation',
-                body: `${profileMap.get(userId)?.display_name || userEmail} added you to "${selectedConversation.name || 'a group chat'}".`,
+                title: 'Added to a group chat',
+                body: `${getCurrentUserLabel()} added you to "${selectedConversation.name || 'a group chat'}".`,
                 payload: { conversation_id: selectedConversation.id },
             });
-            await postSystemMessage(selectedConversation.id, `${getCurrentUserLabel()} added ${getProfileHeading(targetProfile)} (@${targetProfile.username}).`);
             setGroupMemberUsername('');
             await refreshChatData();
         }
@@ -1313,16 +1303,20 @@ export default function CampusChatPanel({ userId, userEmail }) {
         setIsUnfriending(true);
         setChatError(null);
         try {
-            const { error } = await supabase
-                .from('friendships')
-                .delete()
-                .or(`and(user_id.eq.${userId},friend_id.eq.${friendUserId}),and(user_id.eq.${friendUserId},friend_id.eq.${userId})`);
-            if (error) {
-                setChatError(`Couldn't remove this friend: ${error.message}`);
+            const response = await fetch('/api/chat/unfriend', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ friendUserId }),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) {
+                setChatError(`Couldn't remove this friend: ${data.message || response.statusText}`);
                 return;
             }
             setFriendships((prev) => prev.filter((item) => !((item.user_id === userId && item.friend_id === friendUserId) ||
                 (item.user_id === friendUserId && item.friend_id === userId))));
+            setFriendRequests((prev) => prev.filter((item) => !((item.sender_id === userId && item.receiver_id === friendUserId) ||
+                (item.sender_id === friendUserId && item.receiver_id === userId))));
             await refreshChatData();
         }
         finally {

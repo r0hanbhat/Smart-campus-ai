@@ -4,6 +4,7 @@ import { getSampleClubs, getSampleEvents } from '@/lib/smart-campus/sample-data'
 import { DEFAULT_ISSUE_NOTIFICATION_PREFERENCES } from '@/lib/smart-campus/issues.js';
 import { createDefaultTeacherWorkspace } from '@/lib/smart-campus/teacher-workspace.js';
 import { withMissingSelectColumnsFallback } from '@/lib/supabase/schema-compat.js';
+import { createSupabaseAuthHeaders } from '@/lib/supabase/auth-fetch.js';
 import { toPersistedMessages } from '@/lib/smart-campus/utils';
 const PENDING_TEACHER_SIGNUP_KEY = 'smart-campus-pending-teacher-signup';
 
@@ -53,7 +54,7 @@ export function useUserStateSync({ user, authLoading, supabase }) {
     const lastSavedSnapshotRef = useRef('');
     useEffect(() => {
         const fetchProfile = async () => {
-            if (!user)
+            if (!user || authLoading)
                 return;
             const fallbackUsername = `${user.email?.split('@')[0] || 'student'}-${user.id.slice(0, 4)}`;
             setUserProfile({
@@ -124,7 +125,7 @@ export function useUserStateSync({ user, authLoading, supabase }) {
             }
         };
         void fetchProfile();
-    }, [supabase, user]);
+    }, [authLoading, supabase, user]);
     useEffect(() => {
         const fetchTeacherVerificationRequest = async () => {
             if (!user) {
@@ -483,9 +484,13 @@ export function useUserStateSync({ user, authLoading, supabase }) {
         setIssuesLoading(false);
         return true;
     };
+    const isSavingRef = useRef(false);
     useEffect(() => {
         const saveUserData = async () => {
             if (!user || !isDataLoaded)
+                return;
+            // Prevent concurrent saves — if a save is already in-flight, skip.
+            if (isSavingRef.current)
                 return;
             const profileForSave = {
                 eventsAttended: events.filter((event) => event.checkedIn).length,
@@ -506,38 +511,91 @@ export function useUserStateSync({ user, authLoading, supabase }) {
                 return;
             }
             lastSavedSnapshotRef.current = snapshot;
-            try {
-                const savePayload = {
-                    events,
-                    clubs,
-                    reminders,
-                    deadlines,
-                    plannerEntries,
-                    teacherWorkspace,
-                    profile: profileForSave,
-                    messages: persistedMessages,
-                };
-                const response = await fetch('/api/user-state', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'same-origin',
-                    body: JSON.stringify(savePayload),
-                });
-                if (!response.ok) {
+            isSavingRef.current = true;
+
+            // Trim excessively long message content to stay under Supabase limits.
+            const MAX_MSG_CONTENT_LENGTH = 8000;
+            const trimmedMessages = persistedMessages.map((msg) => ({
+                ...msg,
+                content: typeof msg.content === 'string' && msg.content.length > MAX_MSG_CONTENT_LENGTH
+                    ? msg.content.slice(0, MAX_MSG_CONTENT_LENGTH) + '…'
+                    : msg.content,
+            }));
+
+            const savePayload = {
+                events,
+                clubs,
+                reminders,
+                deadlines,
+                plannerEntries,
+                teacherWorkspace,
+                profile: profileForSave,
+                messages: trimmedMessages,
+            };
+
+            const MAX_RETRIES = 2;
+            let attempt = 0;
+            let lastError = '';
+
+            while (attempt <= MAX_RETRIES) {
+                try {
+                    const controller = new AbortController();
+                    const abortTimeoutId = window.setTimeout(() => controller.abort(), 20000);
+                    const response = await fetch('/api/user-state', {
+                        method: 'POST',
+                        headers: {
+                            ...Object.fromEntries((await createSupabaseAuthHeaders(supabase)).entries()),
+                            'Content-Type': 'application/json',
+                        },
+                        credentials: 'same-origin',
+                        body: JSON.stringify(savePayload),
+                        signal: controller.signal,
+                    });
+                    window.clearTimeout(abortTimeoutId);
+                    if (response.ok) {
+                        // Success — exit retry loop.
+                        isSavingRef.current = false;
+                        return;
+                    }
                     const payload = await response.json().catch(() => ({ error: 'Failed to save your campus data to Supabase.' }));
+                    lastError = payload.error || 'Unknown save error';
+
+                    // Only retry on timeouts (504) or server errors (500+).
+                    if (response.status >= 500 && attempt < MAX_RETRIES) {
+                        attempt++;
+                        // Exponential backoff: 2s, 4s
+                        await new Promise((resolve) => window.setTimeout(resolve, 2000 * attempt));
+                        continue;
+                    }
+
+                    // Non-retryable error.
                     lastSavedSnapshotRef.current = '';
                     console.error('SUPABASE SAVE ERROR:', payload.error, payload.hint ?? null);
+                    break;
+                }
+                catch (error) {
+                    if (error?.name === 'AbortError') {
+                        lastError = 'Save request timed out (client-side abort).';
+                    } else {
+                        lastError = error instanceof Error ? error.message : 'Failed to save your campus data to Supabase.';
+                    }
+                    if (attempt < MAX_RETRIES) {
+                        attempt++;
+                        await new Promise((resolve) => window.setTimeout(resolve, 2000 * attempt));
+                        continue;
+                    }
+                    lastSavedSnapshotRef.current = '';
+                    console.error('SUPABASE SAVE ERROR:', lastError);
+                    break;
                 }
             }
-            catch (error) {
-                lastSavedSnapshotRef.current = '';
-                const message = error instanceof Error ? error.message : 'Failed to save your campus data to Supabase.';
-                console.error('SUPABASE SAVE ERROR:', message);
-            }
+            isSavingRef.current = false;
         };
+        // Debounce saves with a 3 second delay to reduce request frequency
+        // and give Supabase more breathing room.
         const timeoutId = window.setTimeout(() => {
             void saveUserData();
-        }, 1500);
+        }, 3000);
         return () => window.clearTimeout(timeoutId);
     }, [clubs, deadlines, events, isDataLoaded, messages, plannerEntries, reminders, supabase, teacherWorkspace, user]);
     return {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/server/supabase';
+import { getAuthenticatedUser, createSupabaseServiceRoleClient } from '@/lib/server/supabase';
 import { sendTeacherVerificationDecisionEmail } from '@/lib/server/verification-mailer';
 import { isMissingSchemaTableError } from '@/lib/supabase/schema-compat.js';
 
@@ -43,7 +43,9 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Teacher verification request not found.' }, { status: 404 });
         }
 
-        const { error: updateRequestError } = await supabase
+        const adminSupabase = createSupabaseServiceRoleClient();
+        
+        const { error: updateRequestError } = await adminSupabase
             .from('teacher_verification_requests')
             .update({
                 status: nextStatus,
@@ -56,10 +58,10 @@ export async function POST(request) {
             return NextResponse.json({ error: updateRequestError.message }, { status: 500 });
         }
 
-        const { error: profileUpdateError } = await supabase
+        const { error: profileUpdateError } = await adminSupabase
             .from('profiles')
             .update({
-                role: nextStatus === 'approved' ? 'teacher' : 'student',
+                role: 'teacher',
                 verification_status: nextStatus,
             })
             .eq('user_id', userId);

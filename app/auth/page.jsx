@@ -85,8 +85,9 @@ function AuthPageContent() {
     const [clubLoginId, setClubLoginId] = useState('');
     const [clubPassword, setClubPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [resendLoading, setResendLoading] = useState(false);
     const [message, setMessage] = useState('');
-    const { signIn, signUp, signOut } = useAuth();
+    const { signIn, signUp, signOut, resendConfirmation } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
     const selectedPortal = ROLE_PORTAL_COPY[selectedRole] || ROLE_PORTAL_COPY.student;
@@ -94,6 +95,7 @@ function AuthPageContent() {
     const isTeacherSignup = !isLogin && selectedRole === 'teacher';
     const isAdminMode = selectedRole === 'admin';
     const isClubMode = selectedRole === 'club';
+    const canResendConfirmation = !isLogin && !isClubMode && Boolean(email.trim()) && !loading;
 
     useEffect(() => {
         const requestedRole = searchParams.get('role');
@@ -170,6 +172,26 @@ function AuthPageContent() {
         setMessage('Phone number verified. You can continue the teacher signup.');
     };
 
+    const handleResendConfirmation = async () => {
+        if (!email.trim()) {
+            setMessage('Error: Enter the same email address you used for signup first.');
+            return;
+        }
+        setResendLoading(true);
+        try {
+            const { error } = await resendConfirmation(email.trim());
+            if (error) {
+                setMessage(`Error: ${error.message}`);
+            }
+            else {
+                setMessage('Confirmation email resent. Check spam/promotions too if it does not appear in your inbox.');
+            }
+        }
+        finally {
+            setResendLoading(false);
+        }
+    };
+
     const handleSubmit = async (event) => {
         event.preventDefault();
         setLoading(true);
@@ -215,11 +237,11 @@ function AuthPageContent() {
                     await signOut();
                     setMessage('Error: The Admin ID does not match this account.');
                 }
-                else if (selectedRole === 'teacher' && data.user?.user_metadata?.role !== 'teacher') {
+                else if (selectedRole === 'teacher' && data.user?.user_metadata?.role && data.user.user_metadata.role !== 'teacher') {
                     await signOut();
                     setMessage('Error: ' + ROLE_MISMATCH_MESSAGES.teacher);
                 }
-                else if (selectedRole === 'student' && data.user?.user_metadata?.role !== 'student') {
+                else if (selectedRole === 'student' && data.user?.user_metadata?.role && data.user.user_metadata.role !== 'student') {
                     await signOut();
                     setMessage('Error: ' + ROLE_MISMATCH_MESSAGES.student);
                 }
@@ -291,23 +313,29 @@ function AuthPageContent() {
             if (error) {
                 setMessage(`Error: ${error.message}`);
             }
-            else if (selectedRole === 'teacher') {
-                window.localStorage.setItem(PENDING_TEACHER_SIGNUP_KEY, JSON.stringify({
-                    userId: data.user?.id || null,
-                    email,
-                    name: name.trim(),
-                    age: parsedAge,
-                    role: selectedRole,
-                    phoneNumber: phoneNumber.trim(),
-                    phoneVerified,
-                    employeeId: employeeId.trim(),
-                    employeeIdImageData,
-                    employeeIdImageName,
-                }));
-                setMessage('Teacher signup submitted. After email verification and login, your approval request will appear in the admin portal.');
-            }
             else {
-                setMessage('Check your email to confirm your account.');
+                if (selectedRole === 'teacher') {
+                    window.localStorage.setItem(PENDING_TEACHER_SIGNUP_KEY, JSON.stringify({
+                        userId: data.user?.id || null,
+                        email,
+                        name: name.trim(),
+                        age: parsedAge,
+                        role: selectedRole,
+                        phoneNumber: phoneNumber.trim(),
+                        phoneVerified,
+                        employeeId: employeeId.trim(),
+                        employeeIdImageData,
+                        employeeIdImageName,
+                        rollNumber: rollNumber.trim(),
+                        course: course.trim(),
+                        branch: branch.trim(),
+                        semester: semester.trim() ? Number.parseInt(semester, 10) : null,
+                    }));
+                    setMessage('Teacher account created. Verify your email, then log in once to create your profile and submit your verification request to the admin queue.');
+                }
+                else {
+                    setMessage('Account created. Check your email to confirm it, then log in once to finish setting up your profile.');
+                }
             }
         }
         catch (error) {
@@ -537,6 +565,17 @@ function AuthPageContent() {
                             <div className={`rounded-[1rem] px-4 py-3 text-sm ${message.startsWith('Error:') ? 'border border-red-400/30 bg-red-500/10 text-red-100' : 'border border-emerald-400/30 bg-emerald-500/10 text-emerald-100'}`}>
                                 {message}
                             </div>
+                        ) : null}
+
+                        {!isLogin && !isAdminMode ? (
+                            <button
+                                type="button"
+                                onClick={handleResendConfirmation}
+                                disabled={!canResendConfirmation || resendLoading}
+                                className="w-full rounded-[1rem] border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {resendLoading ? 'Resending confirmation...' : 'Resend confirmation email'}
+                            </button>
                         ) : null}
 
                         {!isLogin && isAdminMode ? (

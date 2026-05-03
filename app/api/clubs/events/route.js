@@ -2,13 +2,6 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
-async function getClubSession() {
-  const cookieStore = await cookies();
-  const raw = cookieStore.get('club_session')?.value;
-  if (!raw) return null;
-  try { return JSON.parse(raw); } catch { return null; }
-}
-
 function createAdminClient(cookieStore) {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -37,7 +30,15 @@ export async function GET() {
     const supabase = createAdminClient(cookieStore);
     const { data: events, error } = await supabase
       .from('events')
-      .select(`*, approvals:event_approvals(actor_role, action, reason, acted_at)`)
+      .select(`
+        *,
+        approvals:event_approvals(actor_role, action, reason, acted_at),
+        registrations:event_registrations(
+          student_id,
+          registered_at,
+          profile:profiles(full_name, display_name, roll_number, branch, course)
+        )
+      `)
       .eq('club_id', session.club_id)
       .order('created_at', { ascending: false });
 

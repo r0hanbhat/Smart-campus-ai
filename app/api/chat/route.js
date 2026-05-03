@@ -28,8 +28,10 @@ export async function POST(req) {
         const action = detectAction(message);
 
         // ── 2. RAG retrieval — run in parallel with context building ──────────
-        //    Skip retrieval for image messages and structured actions to reduce latency
-        const shouldRunRAG = !imageDataUrl && !action;
+        //    Skip retrieval only for image messages and navigation/interest actions
+        //    Allow RAG for reminders/deadlines since they often involve campus policies
+        const actionTypesSkipRAG = ['navigate', 'express_interest'];
+        const shouldRunRAG = !imageDataUrl && (!action || !actionTypesSkipRAG.includes(action.type));
         const ragPromise   = shouldRunRAG
             ? retrieveContext(message)
             : Promise.resolve({ chunks: [], sources: [], contextBlock: '', hasContext: false });

@@ -9,7 +9,9 @@ export async function POST(request) {
         if (authError || !user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const roleProfile = await getUserRoleProfile(supabase, user.id);
-        if (!['teacher', 'admin'].includes(roleProfile?.role)) {
+        const metadataRole = typeof user.user_metadata?.role === 'string' ? user.user_metadata.role : '';
+        const effectiveRole = roleProfile?.role || metadataRole || 'student';
+        if (!['teacher', 'admin'].includes(effectiveRole)) {
             return NextResponse.json({ error: 'Teacher or admin access required.' }, { status: 403 });
         }
 
@@ -25,9 +27,19 @@ export async function POST(request) {
             return NextResponse.json({ error: 'id, name, code, course, branch, and semester are required.' }, { status: 400 });
         }
 
+        const subjectPayload = {
+            id,
+            name,
+            code,
+            course,
+            branch,
+            semester,
+            teacher_user_id: effectiveRole === 'teacher' ? user.id : null,
+        };
+
         const { error } = await supabase
             .from('subjects')
-            .upsert({ id, name, code, course, branch, semester }, { onConflict: 'id' });
+            .upsert(subjectPayload, { onConflict: 'id' });
 
         if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -45,7 +57,9 @@ export async function DELETE(request) {
         if (authError || !user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const roleProfile = await getUserRoleProfile(supabase, user.id);
-        if (!['teacher', 'admin'].includes(roleProfile?.role)) {
+        const metadataRole = typeof user.user_metadata?.role === 'string' ? user.user_metadata.role : '';
+        const effectiveRole = roleProfile?.role || metadataRole || 'student';
+        if (!['teacher', 'admin'].includes(effectiveRole)) {
             return NextResponse.json({ error: 'Teacher or admin access required.' }, { status: 403 });
         }
 

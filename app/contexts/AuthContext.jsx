@@ -1,8 +1,8 @@
 'use client';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { createSupabaseAuthHeaders } from '@/lib/supabase/auth-fetch.js';
 import { resolveAccountRole, resolveVerificationStatus } from '@/lib/smart-campus/roles.js';
-import { isMissingSchemaTableError, withMissingColumnFallback } from '@/lib/supabase/schema-compat.js';
 const AuthContext = createContext(undefined);
 const ACTIVE_TAB_IDS_KEY = 'smart-campus-active-tab-ids';
 const LAST_TAB_CLOSED_AT_KEY = 'smart-campus-last-tab-closed-at';
@@ -179,102 +179,43 @@ export function AuthProvider({ children }) {
             const branch = readUserMetadataString(user, 'branch') || null;
             const semester = readUserMetadataInteger(user, 'semester');
             try {
-                const { data, error } = await supabase
-                    .from('profiles')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .maybeSingle();
-                if (error) {
-                    console.error('Failed to check profile:', error.message);
+                const authHeaders = await createSupabaseAuthHeaders(supabase);
+                const response = await fetch('/api/profile/provision', {
+                    method: 'POST',
+                    headers: {
+                        ...Object.fromEntries(authHeaders.entries()),
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        email,
+                        fallbackUsername,
+                        displayName,
+                        fullName: metadataName || null,
+                        age: typeof user.user_metadata?.age === 'number' ? user.user_metadata.age : null,
+                        role,
+                        verificationStatus,
+                        phoneNumber,
+                        phoneVerified,
+                        employeeId,
+                        rollNumber,
+                        course,
+                        branch,
+                        semester,
+                        adminId: readUserMetadataString(user, 'adminId') || null,
+                        isOnline: false,
+                    }),
+                });
+                const payload = await response.json();
+                if (!response.ok) {
+                    console.error('Failed to sync profile:', payload.error || 'Failed to provision profile.');
                     return;
                 }
-                if (!data) {
-                    const profileInsert = {
-                        user_id: user.id,
-                        username: fallbackUsername,
-                        display_name: displayName,
-                        full_name: metadataName || null,
-                        age: typeof user.user_metadata?.age === 'number' ? user.user_metadata.age : null,
-                        email: email || null,
-                        role,
-                        verification_status: verificationStatus,
-                        phone_number: phoneNumber,
-                        phone_verified: phoneVerified,
-                        employee_id: employeeId,
-                        roll_number: rollNumber,
-                        course,
-                        branch,
-                        semester,
-                        admin_id: readUserMetadataString(user, 'adminId') || null,
-                        is_online: false,
-                    };
-                    const { error: insertError } = await withMissingColumnFallback((nextProfileInsert) => supabase.from('profiles').insert(nextProfileInsert), profileInsert, ['age', 'roll_number', 'course', 'branch', 'semester']);
-                    if (insertError && insertError.code !== '23505') {
-                        console.error('Failed to create profile:', insertError.message);
-                    }
-                }
-                if (data) {
-                    const currentProfile = data;
-                    const nextUsername = currentProfile.username?.trim() ? currentProfile.username : fallbackUsername;
-                    const nextDisplayName = currentProfile.display_name?.trim() ? currentProfile.display_name : displayName;
-                    const nextRole = currentProfile.role?.trim() ? currentProfile.role : role;
-                    const nextVerificationStatus = currentProfile.verification_status?.trim() ? currentProfile.verification_status : verificationStatus;
-                    const needsUpdate = currentProfile.username !== nextUsername ||
-                        currentProfile.display_name !== nextDisplayName ||
-                        currentProfile.role !== nextRole ||
-                        currentProfile.verification_status !== nextVerificationStatus ||
-                        currentProfile.phone_number !== phoneNumber ||
-                        currentProfile.employee_id !== employeeId ||
-                        currentProfile.roll_number !== rollNumber ||
-                        currentProfile.course !== course ||
-                        currentProfile.branch !== branch ||
-                        currentProfile.semester !== semester ||
-                        currentProfile.admin_id !== (readUserMetadataString(user, 'adminId') || null);
-                    if (needsUpdate) {
-                        const profileUpdate = {
-                            username: nextUsername,
-                            display_name: nextDisplayName,
-                            role: nextRole,
-                            verification_status: nextVerificationStatus,
-                            phone_number: phoneNumber,
-                            phone_verified: phoneVerified,
-                            employee_id: employeeId,
-                            roll_number: rollNumber,
-                            course,
-                            branch,
-                            semester,
-                            admin_id: readUserMetadataString(user, 'adminId') || null,
-                        };
-                        const { error: updateError } = await withMissingColumnFallback((nextProfileUpdate) => supabase
-                            .from('profiles')
-                            .update(nextProfileUpdate)
-                            .eq('user_id', user.id), profileUpdate, ['roll_number', 'course', 'branch', 'semester']);
-                        if (updateError) {
-                            console.error('Failed to update profile:', updateError.message);
-                        }
-                    }
-                }
-                if (role === 'student' && rollNumber && course && branch && semester) {
-                    const { error: studentUpsertError } = await supabase
-                        .from('students')
-                        .upsert({
-                        user_id: user.id,
-                        name: displayName,
-                        roll_number: rollNumber,
-                        course,
-                        branch,
-                        semester,
-                    }, { onConflict: 'user_id' });
-                    if (studentUpsertError) {
-                        if (!isMissingSchemaTableError(studentUpsertError, 'students')) {
-                            console.error('Failed to sync student record:', studentUpsertError.message);
-                        }
-                    }
-                }
-                const effectiveProfileRole = data?.role?.trim() ? data.role : role;
-                const effectiveVerificationStatus = data?.verification_status?.trim() ? data.verification_status : verificationStatus;
-                if (effectiveProfileRole === 'teacher' && effectiveVerificationStatus !== 'approved' && employeeId && employeeIdImageData) {
-                    const response = await fetch('/api/auth/teacher-verification-request', {
+                
+                const finalVerificationStatus = payload.profile?.verification_status || verificationStatus;
+
+                if (role === 'teacher' && finalVerificationStatus !== 'approved' && employeeId) {
+                    const verificationResponse = await fetch('/api/auth/teacher-verification-request', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'same-origin',
@@ -286,8 +227,8 @@ export function AuthProvider({ children }) {
                             employeeIdImageData,
                         }),
                     });
-                    if (!response.ok) {
-                        const payload = await response.json().catch(() => ({ error: 'Failed to sync teacher verification request.' }));
+                    if (!verificationResponse.ok) {
+                        const payload = await verificationResponse.json().catch(() => ({ error: 'Failed to sync teacher verification request.' }));
                         console.error('Failed to sync teacher verification request:', payload.error || 'Request failed.');
                     }
                     else {
@@ -314,7 +255,6 @@ export function AuthProvider({ children }) {
                     phoneNumber: phoneNumber || null,
                     phoneVerified: Boolean(phoneVerified),
                     employeeId: employeeId || null,
-                    employeeIdImageData: employeeIdImageData || null,
                     employeeIdImageName: employeeIdImageName || null,
                     rollNumber: rollNumber || null,
                     course: course || null,
@@ -336,7 +276,16 @@ export function AuthProvider({ children }) {
     const signOut = async () => {
         await supabase.auth.signOut();
     };
-    return (<AuthContext.Provider value={{ user, loading, signUp, signIn, signOut }}>
+    const resendConfirmation = async (email) => {
+        return await supabase.auth.resend({
+            type: 'signup',
+            email,
+            options: {
+                emailRedirectTo: `${window.location.origin}/auth/callback`,
+            },
+        });
+    };
+    return (<AuthContext.Provider value={{ user, loading, signUp, signIn, signOut, resendConfirmation }}>
       {children}
     </AuthContext.Provider>);
 }

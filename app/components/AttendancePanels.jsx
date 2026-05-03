@@ -20,10 +20,6 @@ function StatCard({ label, value, accentClassName }) {
     );
 }
 
-function uniqueValues(values) {
-    return Array.from(new Set(values.filter(Boolean)));
-}
-
 function getTodayDateKey() {
     const now = new Date();
     const timezoneOffset = now.getTimezoneOffset() * 60 * 1000;
@@ -124,9 +120,9 @@ export function TeacherAttendancePanel() {
     // Subject options: assigned subjects for this teacher (filtered to current class).
     // If teacher has no assignments yet, fall back to all subjects from DB.
     const subjectPool = assignedSubjects.length > 0 ? assignedSubjects : allSubjects;
-    const subjectOptions = useMemo(() => subjectPool.filter((e) => e.course === effectiveSelectedCourse
+    const subjectOptions = subjectPool.filter((e) => e.course === effectiveSelectedCourse
         && e.branch === effectiveSelectedBranch
-        && String(e.semester) === effectiveSelectedSemester), [subjectPool, effectiveSelectedBranch, effectiveSelectedCourse, effectiveSelectedSemester]);
+        && String(e.semester) === effectiveSelectedSemester);
     const effectiveSelectedSubjectId = subjectOptions.some((e) => e.id === selectedSubjectId) ? selectedSubjectId : (subjectOptions[0]?.id || '');
     const selectedSubject = subjectOptions.find((e) => e.id === effectiveSelectedSubjectId) || null;
     const isAssignedSubject = assignedSubjects.some((e) => e.id === effectiveSelectedSubjectId);
@@ -136,7 +132,8 @@ export function TeacherAttendancePanel() {
     // Reset draft statuses whenever the active subject or date changes so stale
     // keys from the previous subject / session do not bleed into the new view.
     useEffect(() => {
-        setDraftStatuses({});
+        const t = setTimeout(() => setDraftStatuses({}), 0);
+        return () => clearTimeout(t);
     }, [effectiveSelectedSubjectId, attendanceDate]);
 
     useEffect(() => {

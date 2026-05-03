@@ -150,6 +150,7 @@ export default function ClubPortalPage() {
   const [dashTab, setDashTab] = useState('events'); // 'events' | 'submit' | 'edit'
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingEvent, setEditingEvent] = useState(null);
+  const [expandedEventId, setExpandedEventId] = useState(null);
   const [formMsg, setFormMsg] = useState('');
   const [formErr, setFormErr] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -361,24 +362,55 @@ export default function ClubPortalPage() {
                           ✗ {event.rejection_reason}
                         </div>
                       )}
-                      <div className="mt-4 flex gap-2">
-                        {canEdit && (
+                      <div className="mt-4 flex flex-wrap gap-2 justify-between">
+                        <div className="flex gap-2">
+                          {canEdit && (
+                            <button
+                              onClick={() => startEdit(event)}
+                              className="rounded-[1rem] bg-gradient-to-r from-cyan-500 to-emerald-400 px-4 py-2 text-xs font-semibold text-slate-950"
+                            >
+                              Edit & Re-submit
+                            </button>
+                          )}
+                          {canWithdraw && (
+                            <button
+                              onClick={() => void handleWithdraw(event.id)}
+                              className="rounded-[1rem] border border-red-400/25 bg-red-500/10 px-4 py-2 text-xs text-red-200"
+                            >
+                              Withdraw
+                            </button>
+                          )}
+                        </div>
+                        {event.registrations && event.registrations.length > 0 && (
                           <button
-                            onClick={() => startEdit(event)}
-                            className="rounded-[1rem] bg-gradient-to-r from-cyan-500 to-emerald-400 px-4 py-2 text-xs font-semibold text-slate-950"
+                            onClick={() => setExpandedEventId(expandedEventId === event.id ? null : event.id)}
+                            className="rounded-[1rem] border border-cyan-400/20 bg-cyan-500/10 px-4 py-2 text-xs font-medium text-cyan-200"
                           >
-                            Edit & Re-submit
-                          </button>
-                        )}
-                        {canWithdraw && (
-                          <button
-                            onClick={() => void handleWithdraw(event.id)}
-                            className="rounded-[1rem] border border-red-400/25 bg-red-500/10 px-4 py-2 text-xs text-red-200"
-                          >
-                            Withdraw
+                            {expandedEventId === event.id ? 'Hide Registrations' : `View Registrations (${event.registrations.length})`}
                           </button>
                         )}
                       </div>
+                      {expandedEventId === event.id && event.registrations?.length > 0 && (
+                        <div className="mt-4 rounded-[1rem] bg-black/20 p-4 border border-white/5">
+                          <h4 className="text-sm font-semibold text-white mb-3">Registered Students</h4>
+                          <div className="space-y-2 max-h-60 overflow-y-auto pr-2 campus-scroll">
+                            {event.registrations.map(reg => {
+                              const p = reg.profile || {};
+                              return (
+                                <div key={reg.student_id} className="flex justify-between items-center bg-white/5 rounded-lg p-3 text-xs border border-white/5">
+                                  <div>
+                                    <div className="font-semibold text-white">{p.full_name || p.display_name || 'Student'}</div>
+                                    <div className="text-white/60 mt-0.5">{p.roll_number || 'N/A'} • {p.course || 'N/A'} {p.branch ? `(${p.branch})` : ''}</div>
+                                  </div>
+                                  <div className="text-white/40">
+                                    {new Date(reg.registered_at).toLocaleDateString()}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

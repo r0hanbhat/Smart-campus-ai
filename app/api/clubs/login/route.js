@@ -58,7 +58,12 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    const { password_hash: _omit, ...safeClub } = club;
+    const safeClub = {
+      id: club.id,
+      club_name: club.club_name,
+      login_id: club.login_id,
+      coordinator_id: club.coordinator_id,
+    };
     const response = NextResponse.json({ club: safeClub });
 
     response.cookies.set('club_session', JSON.stringify({ club_id: club.id, club_name: club.club_name }), {
@@ -69,7 +74,7 @@ export async function POST(request) {
     });
 
     return response;
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

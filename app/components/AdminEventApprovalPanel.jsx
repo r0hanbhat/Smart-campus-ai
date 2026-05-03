@@ -127,7 +127,10 @@ export default function AdminEventApprovalPanel() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { void load(activeTab === 'all'); }, [load, activeTab]);
+  useEffect(() => {
+    const t = setTimeout(() => void load(activeTab === 'all'), 0);
+    return () => clearTimeout(t);
+  }, [load, activeTab]);
 
   const handleAction = (eventId) => {
     setEvents(prev => prev.filter(e => e.id !== eventId));

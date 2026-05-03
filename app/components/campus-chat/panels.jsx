@@ -169,12 +169,12 @@ export function ChatViewPanel({ addMemberToSelectedGroup, canAddMembersToSelecte
             <div className="mb-3">
               <div className="mb-2 text-xs font-semibold text-white/70">Members</div>
               <div className="flex flex-wrap items-center gap-2">
-                {selectedGroupMembers.map((member) => (<div key={member.user_id} className="flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs text-white/80">
+                {selectedGroupMembers.map((member) => {
+                  return (<div key={member.user_id} className="flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs text-white/80">
                     <span>@{member.username}</span>
-                    {canManageSelectedGroup && member.user_id !== userId ? (<button onClick={() => void removeMemberFromSelectedGroup(member)} className="ml-1 rounded-full border border-red-400/25 bg-red-500/10 px-1.5 py-0.5 text-[10px] text-red-100 hover:bg-red-500/20">
-                        x
-                      </button>) : null}
-                  </div>))}
+                    {canManageSelectedGroup && member.user_id !== userId ? (<button onClick={() => void removeMemberFromSelectedGroup(member)} className="ml-1 rounded-full border border-red-400/25 bg-red-500/10 px-1.5 py-0.5 text-[10px] text-red-100 hover:bg-red-500/20">x</button>) : null}
+                    </div>);
+                })}
               </div>
             </div>
 
@@ -382,7 +382,7 @@ export function NotificationsViewPanel({ acceptGroupInvitation, markNotification
     return (<div className="space-y-4">
       <div>
         <h3 className="text-xl font-semibold text-white">Notifications</h3>
-        <p className="text-sm text-white/50">Friend requests, accepts, and group updates.</p>
+        <p className="text-sm text-white/50">Friend requests, group updates, and teacher announcements.</p>
       </div>
       {notifications.length > 0 ? (<div className="space-y-3">
           {notifications.map((notification) => (<div key={notification.id} className={`w-full rounded-xl border p-4 text-left transition ${notification.is_read

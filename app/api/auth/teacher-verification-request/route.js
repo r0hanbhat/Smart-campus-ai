@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/server/supabase';
+import { getAuthenticatedUser, createSupabaseServiceRoleClient } from '@/lib/server/supabase';
 import { isMissingSchemaTableError } from '@/lib/supabase/schema-compat.js';
 
 export async function GET() {
@@ -44,11 +44,12 @@ export async function POST(request) {
         const employeeIdImageData = typeof body?.employeeIdImageData === 'string' ? body.employeeIdImageData.trim() : '';
         const employeeIdImageName = typeof body?.employeeIdImageName === 'string' ? body.employeeIdImageName.trim() : '';
 
-        if (!fullName || !phoneNumber || !employeeId || !employeeIdImageData) {
+        if (!fullName || !phoneNumber || !employeeId) {
             return NextResponse.json({ error: 'Missing teacher verification fields.' }, { status: 400 });
         }
 
-        const { error } = await supabase.from('teacher_verification_requests').upsert({
+        const adminSupabase = createSupabaseServiceRoleClient();
+        const { error } = await adminSupabase.from('teacher_verification_requests').upsert({
             user_id: user.id,
             email: user.email || null,
             full_name: fullName,

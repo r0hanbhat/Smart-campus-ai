@@ -38,61 +38,18 @@ function EmptyState({ title }) {
     );
 }
 
-function readFileAsDataUrl(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
-        reader.onerror = () => reject(new Error('Unable to read the uploaded file.'));
-        reader.readAsDataURL(file);
-    });
-}
-
-export function TeacherPendingPanel({ profile, request, onSignOut, onSubmitRequest, requestLoading = false, requestError = '' }) {
+export function TeacherPendingPanel({ profile, request, authUser, onSignOut, requestLoading = false, requestError = '' }) {
     const profileVerificationStatus = profile?.verification_status || '';
     const requestStatus = profileVerificationStatus === 'approved' ? 'approved' : request?.status || profileVerificationStatus || 'pending';
     const isRejected = requestStatus === 'rejected';
     const isApproved = requestStatus === 'approved';
     const submittedAt = request?.created_at ? new Date(request.created_at).toLocaleString() : null;
     const reviewedAt = request?.reviewed_at ? new Date(request.reviewed_at).toLocaleString() : null;
-    const hasRealRequest = Boolean(request?.id);
-    const [manualPhoneNumber, setManualPhoneNumber] = useState(() => request?.phone_number || profile?.phone_number || '');
-    const [manualEmployeeId, setManualEmployeeId] = useState(() => request?.employee_id || profile?.employee_id || '');
-    const [manualImageData, setManualImageData] = useState(() => request?.employee_id_image_data || '');
-    const [manualImageName, setManualImageName] = useState(() => request?.employee_id_image_name || '');
-    const [manualFormMessage, setManualFormMessage] = useState('');
-
-    const handleManualImageUpload = async (event) => {
-        const file = event.target.files?.[0];
-        if (!file) {
-            return;
-        }
-        try {
-            const dataUrl = await readFileAsDataUrl(file);
-            setManualImageData(dataUrl);
-            setManualImageName(file.name);
-            setManualFormMessage('');
-        }
-        catch (error) {
-            setManualFormMessage(error instanceof Error ? error.message : 'Failed to process the uploaded ID image.');
-        }
-    };
-
-    const handleManualSubmit = async () => {
-        setManualFormMessage('');
-        if (!manualPhoneNumber.trim() || !manualEmployeeId.trim() || !manualImageData) {
-            setManualFormMessage('Enter phone number, employee ID, and upload the employee ID image before submitting.');
-            return;
-        }
-        const didSubmit = await onSubmitRequest?.({
-            phoneNumber: manualPhoneNumber,
-            employeeId: manualEmployeeId,
-            employeeIdImageData: manualImageData,
-            employeeIdImageName: manualImageName,
-        });
-        if (didSubmit) {
-            setManualFormMessage('Teacher verification request submitted. Ask the admin to refresh the portal.');
-        }
-    };
+    const displayName = profile?.full_name || profile?.display_name || authUser?.user_metadata?.name || authUser?.email?.split('@')[0] || 'Teacher';
+    const email = request?.email || profile?.email || authUser?.email || 'Not available';
+    const phoneNumber = request?.phone_number || profile?.phone_number || authUser?.user_metadata?.phoneNumber || 'Not provided';
+    const employeeId = request?.employee_id || profile?.employee_id || authUser?.user_metadata?.employeeId || 'Not provided';
+    const phoneVerified = Boolean(profile?.phone_verified ?? authUser?.user_metadata?.phoneVerified);
 
     return (
         <div className="campus-shell min-h-screen px-4 py-8 sm:px-6 lg:px-8">
@@ -105,15 +62,15 @@ export function TeacherPendingPanel({ profile, request, onSignOut, onSubmitReque
                                 {isApproved
                                     ? 'Your teacher access has already been approved'
                                     : isRejected
-                                        ? 'Your teacher access request needs an update'
+                                        ? 'Your teacher access request is still locked'
                                         : 'Your teacher panel is waiting for admin verification'}
                             </h1>
                             <p className="mt-3 max-w-2xl text-sm leading-7 text-white/65">
                                 {isApproved
                                     ? 'Admin approval is already recorded for this account. If this screen still appears, refresh the portal and your teacher dashboard should open without another submission.'
                                     : isRejected
-                                    ? 'An admin reviewed your request and left feedback below. Update the signup details in Supabase and submit a fresh request so the teacher tools can be unlocked.'
-                                    : 'We received your email, phone number, employee ID, and ID image. An admin reviews teacher requests within 24 hours before course tools are unlocked.'}
+                                    ? 'Your email is verified, but admin approval has not unlocked teacher tools yet. Only your account details are visible until the admin reviews the request.'
+                                    : 'Your email is verified. Until the admin approves this teacher account, only your account details and request status are visible.'}
                             </p>
                         </div>
                         <button onClick={onSignOut} className="rounded-full border border-red-300/20 bg-red-500/10 px-5 py-2.5 text-sm font-medium text-red-100 transition hover:bg-red-500/20">
@@ -128,93 +85,47 @@ export function TeacherPendingPanel({ profile, request, onSignOut, onSubmitReque
                         <div className="mt-3 text-2xl font-bold capitalize text-white">{requestStatus}</div>
                     </div>
                     <div className="campus-panel rounded-[1.7rem] p-6">
-                        <div className="text-xs uppercase tracking-[0.2em] text-white/45">Employee ID</div>
-                        <div className="mt-3 text-2xl font-bold text-white">{profile?.employee_id || request?.employee_id || 'Pending'}</div>
+                        <div className="text-xs uppercase tracking-[0.2em] text-white/45">Email Verification</div>
+                        <div className="mt-3 text-2xl font-bold text-white">{authUser?.email_confirmed_at ? 'Verified' : 'Pending'}</div>
                     </div>
                     <div className="campus-panel rounded-[1.7rem] p-6">
                         <div className="text-xs uppercase tracking-[0.2em] text-white/45">Phone Verification</div>
-                        <div className="mt-3 text-2xl font-bold text-white">{profile?.phone_verified ? 'Verified' : 'Pending'}</div>
+                        <div className="mt-3 text-2xl font-bold text-white">{phoneVerified ? 'Verified' : 'Pending'}</div>
                     </div>
                 </div>
 
-                <div className="grid gap-6 md:grid-cols-2">
-                    <PanelCard
-                        title="Submitted Verification Details"
-                        description="This panel shows the actual teacher verification request stored in Supabase."
-                        action={isApproved ? null : <button onClick={() => void onSubmitRequest?.()} disabled={requestLoading} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50">
-                            {requestLoading ? 'Submitting...' : hasRealRequest ? 'Re-submit request' : 'Submit request now'}
-                        </button>}
-                    >
-                        <div className="space-y-3 text-sm text-white/75">
-                            <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Email: {request?.email || profile?.email || 'Not available'}</div>
-                            <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Phone: {request?.phone_number || profile?.phone_number || 'Not provided'}</div>
-                            <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Employee ID: {request?.employee_id || profile?.employee_id || 'Pending'}</div>
-                            <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Submission state: {hasRealRequest ? 'Saved in Supabase' : 'Not saved yet'}</div>
-                            <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Submitted: {submittedAt || 'Waiting for first successful submission'}</div>
-                            {reviewedAt ? (
-                                <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Reviewed: {reviewedAt}</div>
-                            ) : null}
-                            {requestError ? (
-                                <div className="rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-red-100">
-                                    {requestError}
-                                </div>
-                            ) : null}
+                <PanelCard
+                    title="Teacher Account Details"
+                    description="These are the only details visible until admin approval unlocks the teacher dashboard."
+                >
+                    <div className="grid gap-3 md:grid-cols-2 text-sm text-white/75">
+                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Name: {displayName}</div>
+                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Email: {email}</div>
+                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Phone: {phoneNumber}</div>
+                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Employee ID: {employeeId}</div>
+                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Submitted: {submittedAt || 'Waiting for profile sync after first verified login'}</div>
+                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Reviewed: {reviewedAt || 'Not reviewed yet'}</div>
+                    </div>
+                    {requestError ? (
+                        <div className="mt-4 rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                            {requestError}
                         </div>
-                    </PanelCard>
-
-                    <PanelCard
-                        title="Uploaded Employee ID"
-                        description="Admins use this image to confirm the request before unlocking the full teacher dashboard."
-                    >
-                        {manualImageData || request?.employee_id_image_data ? (
-                            <Image
-                                src={manualImageData || request?.employee_id_image_data}
-                                alt="Teacher verification document"
-                                width={1200}
-                                height={800}
-                                unoptimized
-                                className="w-full rounded-[1.2rem] border border-white/10 bg-white/5 object-contain"
-                            />
-                        ) : (
-                            <EmptyState title="No uploaded employee ID image found for this account yet." />
-                        )}
-                    </PanelCard>
-                </div>
-
-                {isApproved ? null : (
-                    <PanelCard
-                        title="Recover Missing Submission"
-                        description="If your old signup did not keep the verification payload, enter it here and submit it directly to Supabase."
-                        action={<button onClick={() => void handleManualSubmit()} disabled={requestLoading} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-white disabled:cursor-not-allowed disabled:opacity-50">
-                            {requestLoading ? 'Submitting...' : 'Submit to admin queue'}
-                        </button>}
-                    >
-                        <div className="grid gap-3 md:grid-cols-2">
-                            <input value={manualPhoneNumber} onChange={(event) => setManualPhoneNumber(event.target.value)} placeholder="Phone number" className="campus-input rounded-[1rem] px-4 py-3" />
-                            <input value={manualEmployeeId} onChange={(event) => setManualEmployeeId(event.target.value)} placeholder="Employee ID" className="campus-input rounded-[1rem] px-4 py-3" />
+                    ) : null}
+                    {requestLoading ? (
+                        <div className="mt-4 rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
+                            Syncing your teacher request...
                         </div>
-                        <div className="mt-4">
-                            <input type="file" accept="image/*" onChange={handleManualImageUpload} className="block w-full rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white" />
-                            <div className="mt-2 text-xs text-white/55">
-                                {manualImageName ? `Uploaded: ${manualImageName}` : 'Upload the employee ID image used for verification.'}
-                            </div>
-                        </div>
-                        {manualFormMessage ? (
-                            <div className="mt-4 rounded-[1rem] border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
-                                {manualFormMessage}
-                            </div>
-                        ) : null}
-                    </PanelCard>
-                )}
+                    ) : null}
+                </PanelCard>
 
                 <PanelCard
-                        title="What Happens Next"
-                        description="Admins can review the uploaded ID image, approve or reject the request, and notify you automatically."
+                    title="What Happens Next"
+                    description="The account stays locked to this screen until the admin approves the teacher request."
                 >
                     <div className="space-y-3 text-sm text-white/75">
-                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">{isApproved ? '1. Admin approval is already saved for this account.' : isRejected ? '1. Review the admin note and correct the teacher verification details.' : '1. Your request stays in the admin verification queue.'}</div>
-                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">{isApproved ? '2. Refresh or sign in again to open the teacher dashboard if this page is still cached.' : isRejected ? '2. Re-submit the corrected request with a valid employee ID image and phone details.' : '2. The admin checks the employee ID, email, and phone verification details.'}</div>
-                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">{isApproved ? '3. The teacher panel should open without showing a re-submit action.' : isRejected ? '3. After approval, your teacher panel unlocks course, assignment, lesson planning, and student tracking tools.' : '3. Once approved, your teacher panel unlocks course, assignment, lesson planning, and student tracking tools.'}</div>
+                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">1. Your verified teacher account remains in the admin review queue.</div>
+                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">2. No teacher tools, subjects, announcements, or dashboards are shown before approval.</div>
+                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">3. After approval, sign in again and the full teacher panel will open automatically.</div>
                         {request?.review_notes ? (
                             <div className="rounded-[1rem] border border-amber-400/25 bg-amber-500/10 px-4 py-3 text-amber-100">
                                 Latest review note: {request.review_notes}
@@ -244,6 +155,12 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
     const [subjectSaveError, setSubjectSaveError] = useState('');
     const [dbSubjects, setDbSubjects] = useState([]);
     const [loadingDbSubjects, setLoadingDbSubjects] = useState(false);
+    const [announcementForm, setAnnouncementForm] = useState({ course: '', branch: '', semester: '', subjectId: '', text: '' });
+    const [announcementSaveMsg, setAnnouncementSaveMsg] = useState('');
+    const [announcementSaveError, setAnnouncementSaveError] = useState('');
+    const [publishingAnnouncement, setPublishingAnnouncement] = useState(false);
+    const [teacherSubjects, setTeacherSubjects] = useState([]);
+    const [loadingTeacherSubjects, setLoadingTeacherSubjects] = useState(false);
 
     // Cascading branch/semester options
     const cfBranchOptions = ACADEMIC_STRUCTURE[courseForm.course]?.branches || [];
@@ -251,16 +168,103 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
     const cfSemesterOptions = ACADEMIC_STRUCTURE[courseForm.course]?.semesters || [];
     const cfSemester = cfSemesterOptions.includes(Number(courseForm.semester)) ? Number(courseForm.semester) : (cfSemesterOptions[0] || '');
 
-    const loadDbSubjects = useCallback(async () => {
-        if (!courseForm.course || !cfBranch || !cfSemester) return;
+    const fetchDbSubjects = async (course, branch, semester) => {
+        if (!course || !branch || !semester) return;
         setLoadingDbSubjects(true);
-        const res = await fetch(`/api/subjects/teacher?course=${encodeURIComponent(courseForm.course)}&branch=${encodeURIComponent(cfBranch)}&semester=${cfSemester}`, { credentials: 'same-origin' });
+        const res = await fetch(`/api/subjects/teacher?course=${encodeURIComponent(course)}&branch=${encodeURIComponent(branch)}&semester=${semester}`, { credentials: 'same-origin' });
         const payload = await res.json().catch(() => ({}));
-        setDbSubjects(Array.isArray(payload.allSubjects) ? payload.allSubjects.filter(s => s.course === courseForm.course && s.branch === cfBranch && String(s.semester) === String(cfSemester)) : []);
+        setDbSubjects(Array.isArray(payload.allSubjects) ? payload.allSubjects.filter(s => s.course === course && s.branch === branch && String(s.semester) === String(semester)) : []);
         setLoadingDbSubjects(false);
+    };
+
+    const loadDbSubjects = () => fetchDbSubjects(courseForm.course, cfBranch, cfSemester);
+
+    useEffect(() => {
+        const t = setTimeout(() => void fetchDbSubjects(courseForm.course, cfBranch, cfSemester), 0);
+        return () => clearTimeout(t);
     }, [courseForm.course, cfBranch, cfSemester]);
 
-    useEffect(() => { void loadDbSubjects(); }, [loadDbSubjects]);
+    const loadTeacherSubjects = async () => {
+        setLoadingTeacherSubjects(true);
+        const res = await fetch('/api/subjects/teacher', { credentials: 'same-origin' });
+        const payload = await res.json().catch(() => ({}));
+        const createdSubjects = Array.isArray(payload.createdSubjects)
+            ? payload.createdSubjects
+            : (Array.isArray(payload.assignedSubjects) ? payload.assignedSubjects : []);
+
+        setTeacherSubjects(createdSubjects);
+        setAnnouncementForm((current) => {
+            const matchingSubject = current.subjectId
+                ? createdSubjects.find((subject) => subject.id === current.subjectId)
+                : null;
+
+            if (matchingSubject) {
+                return {
+                    ...current,
+                    course: matchingSubject.course || current.course,
+                    branch: matchingSubject.branch || current.branch,
+                    semester: matchingSubject.semester ? `${matchingSubject.semester}` : current.semester,
+                };
+            }
+
+            const firstSubject = createdSubjects[0] || null;
+            return {
+                ...current,
+                course: firstSubject?.course || '',
+                branch: firstSubject?.branch || '',
+                semester: firstSubject?.semester ? `${firstSubject.semester}` : '',
+                subjectId: firstSubject?.id || '',
+            };
+        });
+        setLoadingTeacherSubjects(false);
+    };
+
+    useEffect(() => {
+        let isMounted = true;
+
+        async function hydrateTeacherSubjects() {
+            setLoadingTeacherSubjects(true);
+            const res = await fetch('/api/subjects/teacher', { credentials: 'same-origin' });
+            const payload = await res.json().catch(() => ({}));
+            if (!isMounted) {
+                return;
+            }
+
+            const createdSubjects = Array.isArray(payload.createdSubjects)
+                ? payload.createdSubjects
+                : (Array.isArray(payload.assignedSubjects) ? payload.assignedSubjects : []);
+            setTeacherSubjects(createdSubjects);
+            setAnnouncementForm((current) => {
+                const matchingSubject = current.subjectId
+                    ? createdSubjects.find((subject) => subject.id === current.subjectId)
+                    : null;
+
+                if (matchingSubject) {
+                    return {
+                        ...current,
+                        course: matchingSubject.course || current.course,
+                        branch: matchingSubject.branch || current.branch,
+                        semester: matchingSubject.semester ? `${matchingSubject.semester}` : current.semester,
+                    };
+                }
+
+                const firstSubject = createdSubjects[0] || null;
+                return {
+                    ...current,
+                    course: firstSubject?.course || '',
+                    branch: firstSubject?.branch || '',
+                    semester: firstSubject?.semester ? `${firstSubject.semester}` : '',
+                    subjectId: firstSubject?.id || '',
+                };
+            });
+            setLoadingTeacherSubjects(false);
+        }
+
+        void hydrateTeacherSubjects();
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     const handleAddSubject = async () => {
         setSubjectSaveMsg(''); setSubjectSaveError('');
@@ -280,6 +284,7 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
             setSubjectSaveMsg(`Subject "${courseForm.title}" added successfully.`);
             setCourseForm(f => ({ ...f, title: '', code: '' }));
             void loadDbSubjects();
+            void loadTeacherSubjects();
         } else {
             setSubjectSaveError(payload.error || 'Failed to save subject.');
         }
@@ -287,12 +292,16 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
 
     const handleDeleteSubject = async (subjectId) => {
         const res = await fetch(`/api/subjects/manage?id=${encodeURIComponent(subjectId)}`, { method: 'DELETE', credentials: 'same-origin' });
-        if (res.ok) void loadDbSubjects();
+        if (res.ok) {
+            void loadDbSubjects();
+            void loadTeacherSubjects();
+        }
     };
 
-    const [announcementForm, setAnnouncementForm] = useState({ courseId: '', text: '' });
     const [assignmentForm, setAssignmentForm] = useState({ courseId: '', title: '', dueDate: '', gradeWeight: '' });
-    const [studentForm, setStudentForm] = useState({ courseId: '', name: '', progress: '' });
+    const [studentForm, setStudentForm] = useState({ course: '', branch: '', semester: '', subjectId: '', rollNumber: '' });
+    const [classStudents, setClassStudents] = useState([]);
+    const [loadingClassStudents, setLoadingClassStudents] = useState(false);
     const [lessonForm, setLessonForm] = useState({ date: '', topic: '', courseId: '' });
     const [messageForm, setMessageForm] = useState({ recipient: '', subject: '', message: '' });
 
@@ -316,6 +325,167 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
         return `${course.title} | ${course.course} | ${course.branch} | Sem ${course.semester}`;
     };
 
+    const announcementCourseOptions = Array.from(new Set(
+        teacherSubjects
+            .map((subject) => subject.course)
+            .filter(Boolean)
+    ));
+    const announcementSelectedCourse = announcementCourseOptions.includes(announcementForm.course)
+        ? announcementForm.course
+        : (announcementCourseOptions[0] || '');
+    const announcementBranchOptions = Array.from(new Set(
+        teacherSubjects
+            .filter((subject) => subject.course === announcementSelectedCourse)
+            .map((subject) => subject.branch)
+            .filter(Boolean)
+    ));
+    const announcementSelectedBranch = announcementBranchOptions.includes(announcementForm.branch)
+        ? announcementForm.branch
+        : (announcementBranchOptions[0] || '');
+    const announcementSemesterOptions = Array.from(new Set(
+        teacherSubjects
+            .filter((subject) => subject.course === announcementSelectedCourse && subject.branch === announcementSelectedBranch)
+            .map((subject) => Number(subject.semester))
+            .filter(Boolean)
+    )).sort((a, b) => a - b);
+    const announcementSelectedSemester = announcementSemesterOptions.includes(Number(announcementForm.semester))
+        ? `${Number(announcementForm.semester)}`
+        : `${announcementSemesterOptions[0] || ''}`;
+    const announcementSubjectOptions = teacherSubjects.filter((subject) =>
+        subject.course === announcementSelectedCourse
+        && subject.branch === announcementSelectedBranch
+        && String(subject.semester) === String(announcementSelectedSemester)
+    );
+    const legacyClassSubjectOptions = dbSubjects.filter((subject) =>
+        subject.course === announcementSelectedCourse
+        && subject.branch === announcementSelectedBranch
+        && String(subject.semester) === String(announcementSelectedSemester)
+    );
+    const mergedAnnouncementSubjectOptions = [...announcementSubjectOptions];
+
+    for (const subject of legacyClassSubjectOptions) {
+        if (!mergedAnnouncementSubjectOptions.some((entry) => entry.id === subject.id)) {
+            mergedAnnouncementSubjectOptions.push(subject);
+        }
+    }
+
+    const announcementSelectedSubjectId = mergedAnnouncementSubjectOptions.some((subject) => subject.id === announcementForm.subjectId)
+        ? announcementForm.subjectId
+        : (mergedAnnouncementSubjectOptions[0]?.id || '');
+
+    const selectedSubjectDetails = (subjectId) => teacherSubjects.find((subject) => subject.id === subjectId) || null;
+    const allTeacherPanelSubjects = [...teacherSubjects];
+    for (const subject of dbSubjects) {
+        if (!allTeacherPanelSubjects.some((entry) => entry.id === subject.id)) {
+            allTeacherPanelSubjects.push(subject);
+        }
+    }
+
+    const selectedSubjectName = (announcement) => {
+        if (announcement?.subjectName) {
+            return `${announcement.subjectName}${announcement.subjectCode ? ` (${announcement.subjectCode})` : ''}`;
+        }
+
+        const subject = selectedSubjectDetails(announcement?.subjectId);
+        if (subject) {
+            return `${subject.name}${subject.code ? ` (${subject.code})` : ''}`;
+        }
+
+        if (announcement?.courseId) {
+            return selectedCourseName(announcement.courseId);
+        }
+
+        return 'Subject';
+    };
+    const selectedSubjectAudience = (announcement) => {
+        const subject = selectedSubjectDetails(announcement?.subjectId);
+        const course = announcement?.course || subject?.course;
+        const branch = announcement?.branch || subject?.branch;
+        const semester = announcement?.semester || subject?.semester;
+
+        if (!course || !branch || !semester) {
+            return '';
+        }
+
+        return `${course} | ${branch} | Sem ${semester}`;
+    };
+    const studentCourseOptions = Array.from(new Set(
+        allTeacherPanelSubjects
+            .map((subject) => subject.course)
+            .filter(Boolean)
+    ));
+    const selectedStudentCourse = studentCourseOptions.includes(studentForm.course)
+        ? studentForm.course
+        : (studentCourseOptions[0] || '');
+    const studentBranchOptions = Array.from(new Set(
+        allTeacherPanelSubjects
+            .filter((subject) => subject.course === selectedStudentCourse)
+            .map((subject) => subject.branch)
+            .filter(Boolean)
+    ));
+    const selectedStudentBranch = studentBranchOptions.includes(studentForm.branch)
+        ? studentForm.branch
+        : (studentBranchOptions[0] || '');
+    const studentSemesterOptions = Array.from(new Set(
+        allTeacherPanelSubjects
+            .filter((subject) => subject.course === selectedStudentCourse && subject.branch === selectedStudentBranch)
+            .map((subject) => Number(subject.semester))
+            .filter(Boolean)
+    )).sort((a, b) => a - b);
+    const selectedStudentSemester = studentSemesterOptions.includes(Number(studentForm.semester))
+        ? `${Number(studentForm.semester)}`
+        : `${studentSemesterOptions[0] || ''}`;
+    const studentSubjectOptions = allTeacherPanelSubjects.filter((subject) =>
+        subject.course === selectedStudentCourse
+        && subject.branch === selectedStudentBranch
+        && String(subject.semester) === String(selectedStudentSemester)
+    );
+    const selectedStudentSubjectId = studentSubjectOptions.some((subject) => subject.id === studentForm.subjectId)
+        ? studentForm.subjectId
+        : (studentSubjectOptions[0]?.id || '');
+    const selectedStudentSubject = allTeacherPanelSubjects.find((subject) => subject.id === selectedStudentSubjectId) || null;
+    const studentRollNumberOptions = classStudents
+        .map((student) => ({
+            id: student.id || student.user_id || student.roll_number,
+            rollNumber: student.roll_number || student.rollNumber || '',
+            name: student.name || 'Student',
+        }))
+        .filter((student) => student.rollNumber);
+    const selectedStudentRollNumber = studentRollNumberOptions.some((student) => student.rollNumber === studentForm.rollNumber)
+        ? studentForm.rollNumber
+        : (studentRollNumberOptions[0]?.rollNumber || '');
+    const selectedRosterStudent = studentRollNumberOptions.find((student) => student.rollNumber === selectedStudentRollNumber) || null;
+
+    useEffect(() => {
+        let isMounted = true;
+
+        async function loadClassStudents() {
+            if (!selectedStudentCourse || !selectedStudentBranch || !selectedStudentSemester) {
+                setClassStudents([]);
+                return;
+            }
+
+            setLoadingClassStudents(true);
+            const res = await fetch(
+                `/api/students/by-class?course=${encodeURIComponent(selectedStudentCourse)}&branch=${encodeURIComponent(selectedStudentBranch)}&semester=${encodeURIComponent(selectedStudentSemester)}`,
+                { credentials: 'same-origin' }
+            );
+            const payload = await res.json().catch(() => ({}));
+
+            if (!isMounted) {
+                return;
+            }
+
+            setClassStudents(Array.isArray(payload.students) ? payload.students : []);
+            setLoadingClassStudents(false);
+        }
+
+        void loadClassStudents();
+        return () => {
+            isMounted = false;
+        };
+    }, [selectedStudentBranch, selectedStudentCourse, selectedStudentSemester]);
+
     const saveWorkspace = (updater) => {
         setTeacherWorkspace((current) => updater(current || {
             courses: [],
@@ -325,6 +495,60 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
             lessonPlans: [],
             communications: [],
         }));
+    };
+
+    const handlePublishAnnouncement = async () => {
+        setAnnouncementSaveMsg('');
+        setAnnouncementSaveError('');
+
+        if (!announcementSelectedSubjectId) {
+            setAnnouncementSaveError('Select the subject related to this announcement.');
+            return;
+        }
+
+        if (!announcementForm.text.trim()) {
+            setAnnouncementSaveError('Enter the announcement before publishing.');
+            return;
+        }
+
+        setPublishingAnnouncement(true);
+        const res = await fetch('/api/teacher/announcements', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                subjectId: announcementSelectedSubjectId,
+                message: announcementForm.text.trim(),
+            }),
+        });
+        const payload = await res.json().catch(() => ({}));
+        setPublishingAnnouncement(false);
+
+        if (!res.ok) {
+            setAnnouncementSaveError(payload.error || 'Failed to publish announcement.');
+            return;
+        }
+
+        saveWorkspace((current) => ({
+            ...current,
+            announcements: [
+                {
+                    id: payload.announcement.id,
+                    subjectId: payload.announcement.subjectId,
+                    subjectName: payload.announcement.subjectName,
+                    subjectCode: payload.announcement.subjectCode,
+                    teacherName: payload.announcement.teacherName,
+                    text: payload.announcement.message,
+                    createdAt: payload.announcement.created_at,
+                    course: payload.announcement.course,
+                    branch: payload.announcement.branch,
+                    semester: payload.announcement.semester,
+                },
+                ...current.announcements,
+            ],
+        }));
+        setAnnouncementForm((current) => ({ ...current, text: '' }));
+        setAnnouncementSaveMsg(`Announcement sent to ${payload.recipientCount || 0} students as a notice and notification.`);
     };
 
     return (
@@ -429,44 +653,116 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
                         </div>
                     </PanelCard>
 
-                    <PanelCard title="Announcements" description="Send quick updates so students know what changed before class starts.">
-                        <div className="grid gap-3 md:grid-cols-[0.8fr_1.2fr]">
-                            <select value={announcementForm.courseId} onChange={(event) => setAnnouncementForm((current) => ({ ...current, courseId: event.target.value }))} className="campus-input rounded-[1rem] px-4 py-3">
-                                <option value="">General</option>
-                                {courses.map((course) => (
-                                    <option key={course.id} value={course.id}>{course.title}</option>
-                                ))}
-                            </select>
-                            <input value={announcementForm.text} onChange={(event) => setAnnouncementForm((current) => ({ ...current, text: event.target.value }))} placeholder="Announcement" className="campus-input rounded-[1rem] px-4 py-3" />
+                    <PanelCard title="Announcements" description="Select course, branch, semester, and a subject you created in course management before publishing the update.">
+                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                            <div className="space-y-2">
+                                <div className="text-xs uppercase tracking-[0.16em] text-white/45">Course</div>
+                                <select
+                                    value={announcementSelectedCourse}
+                                    onChange={(event) => setAnnouncementForm((current) => ({
+                                        ...current,
+                                        course: event.target.value,
+                                        branch: '',
+                                        semester: '',
+                                        subjectId: '',
+                                    }))}
+                                    className="campus-input min-h-14 w-full rounded-[1rem] px-4 py-3"
+                                    disabled={loadingTeacherSubjects || announcementCourseOptions.length === 0}
+                                >
+                                    {announcementCourseOptions.length === 0 ? (
+                                        <option value="">{loadingTeacherSubjects ? 'Loading courses...' : 'No courses found'}</option>
+                                    ) : announcementCourseOptions.map((course) => (
+                                        <option key={course} value={course}>{course}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="text-xs uppercase tracking-[0.16em] text-white/45">Branch</div>
+                                <select
+                                    value={announcementSelectedBranch}
+                                    onChange={(event) => setAnnouncementForm((current) => ({
+                                        ...current,
+                                        branch: event.target.value,
+                                        semester: '',
+                                        subjectId: '',
+                                    }))}
+                                    className="campus-input min-h-14 w-full rounded-[1rem] px-4 py-3"
+                                    disabled={loadingTeacherSubjects || announcementBranchOptions.length === 0}
+                                >
+                                    {announcementBranchOptions.length === 0 ? (
+                                        <option value="">{loadingTeacherSubjects ? 'Loading branches...' : 'No branches found'}</option>
+                                    ) : announcementBranchOptions.map((branch) => (
+                                        <option key={branch} value={branch}>{branch}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="text-xs uppercase tracking-[0.16em] text-white/45">Semester</div>
+                                <select
+                                    value={announcementSelectedSemester}
+                                    onChange={(event) => setAnnouncementForm((current) => ({
+                                        ...current,
+                                        semester: event.target.value,
+                                        subjectId: '',
+                                    }))}
+                                    className="campus-input min-h-14 w-full rounded-[1rem] px-4 py-3"
+                                    disabled={loadingTeacherSubjects || announcementSemesterOptions.length === 0}
+                                >
+                                    {announcementSemesterOptions.length === 0 ? (
+                                        <option value="">{loadingTeacherSubjects ? 'Loading semesters...' : 'No semesters found'}</option>
+                                    ) : announcementSemesterOptions.map((semester) => (
+                                        <option key={semester} value={semester}>Semester {semester}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="text-xs uppercase tracking-[0.16em] text-white/45">Subject</div>
+                                <select
+                                    value={announcementSelectedSubjectId}
+                                    onChange={(event) => setAnnouncementForm((current) => ({ ...current, subjectId: event.target.value }))}
+                                    className="campus-input min-h-14 w-full rounded-[1rem] px-4 py-3"
+                                    disabled={loadingTeacherSubjects || mergedAnnouncementSubjectOptions.length === 0}
+                                >
+                                    {mergedAnnouncementSubjectOptions.length === 0 ? (
+                                        <option value="">{loadingTeacherSubjects ? 'Loading subjects...' : 'No subjects created for this class'}</option>
+                                    ) : mergedAnnouncementSubjectOptions.map((subject) => (
+                                        <option key={subject.id} value={subject.id}>
+                                            {subject.name} {subject.code ? `(${subject.code})` : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
+                        <div className="mt-4 space-y-2">
+                            <div className="text-xs uppercase tracking-[0.16em] text-white/45">Announcement</div>
+                            <div className="space-y-2">
+                                <textarea
+                                    value={announcementForm.text}
+                                    onChange={(event) => setAnnouncementForm((current) => ({ ...current, text: event.target.value }))}
+                                    placeholder="Write the update you want students of this subject to receive"
+                                    rows={5}
+                                    className="campus-input min-h-32 w-full rounded-[1rem] px-4 py-3"
+                                />
+                            </div>
+                        </div>
+                        {announcementSaveMsg ? <div className="mt-3 rounded-[1rem] border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">{announcementSaveMsg}</div> : null}
+                        {announcementSaveError ? <div className="mt-3 rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{announcementSaveError}</div> : null}
                         <button
-                            onClick={() => {
-                                if (!announcementForm.text.trim()) {
-                                    return;
-                                }
-                                saveWorkspace((current) => ({
-                                    ...current,
-                                    announcements: [
-                                        {
-                                            id: createId('announcement'),
-                                            courseId: announcementForm.courseId,
-                                            text: announcementForm.text.trim(),
-                                            createdAt: new Date().toISOString(),
-                                        },
-                                        ...current.announcements,
-                                    ],
-                                }));
-                                setAnnouncementForm({ courseId: '', text: '' });
-                            }}
-                            className="mt-4 rounded-[1rem] border border-white/10 bg-white/10 px-5 py-3 text-sm font-medium text-white"
+                            onClick={() => void handlePublishAnnouncement()}
+                            disabled={publishingAnnouncement || teacherSubjects.length === 0}
+                            className="mt-4 rounded-[1rem] border border-white/10 bg-white/10 px-5 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                            Publish announcement
+                            {publishingAnnouncement ? 'Publishing...' : 'Publish announcement'}
                         </button>
                         <div className="mt-5 space-y-3">
                             {announcements.length === 0 ? <EmptyState title="No announcements yet." /> : announcements.map((announcement) => (
                                 <div key={announcement.id} className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80">
-                                    <div className="font-semibold text-white">{selectedCourseName(announcement.courseId)}</div>
+                                    <div className="font-semibold text-white">{selectedSubjectName(announcement)}</div>
+                                    {selectedSubjectAudience(announcement) ? <div className="mt-1 text-xs uppercase tracking-[0.16em] text-white/45">{selectedSubjectAudience(announcement)}</div> : null}
                                     <div className="mt-2">{announcement.text}</div>
+                                    <div className="mt-3 text-xs text-cyan-100/75">
+                                        Sent by {announcement.teacherName || displayName}
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -536,20 +832,72 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
                         </div>
                     </PanelCard>
 
-                    <PanelCard title="Student Tracking And Progress" description="Keep a simple progress view for students who need follow-up.">
-                        <div className="grid gap-3 md:grid-cols-3">
-                            <select value={studentForm.courseId} onChange={(event) => setStudentForm((current) => ({ ...current, courseId: event.target.value }))} className="campus-input rounded-[1rem] px-4 py-3">
-                                <option value="">Select course</option>
-                                {courses.map((course) => (
-                                    <option key={course.id} value={course.id}>{course.title}</option>
+                    <PanelCard title="Student Tracking And Progress" description="Keep a simple ward record with course, branch, subject, and roll number for follow-up.">
+                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                            <select
+                                value={selectedStudentCourse}
+                                onChange={(event) => setStudentForm((current) => ({ ...current, course: event.target.value, branch: '', semester: '', subjectId: '', rollNumber: '' }))}
+                                className="campus-input rounded-[1rem] px-4 py-3"
+                            >
+                                {studentCourseOptions.length === 0 ? (
+                                    <option value="">Select course</option>
+                                ) : studentCourseOptions.map((course) => (
+                                    <option key={course} value={course}>{course}</option>
                                 ))}
                             </select>
-                            <input value={studentForm.name} onChange={(event) => setStudentForm((current) => ({ ...current, name: event.target.value }))} placeholder="Student name" className="campus-input rounded-[1rem] px-4 py-3" />
-                            <input type="number" min="0" max="100" value={studentForm.progress} onChange={(event) => setStudentForm((current) => ({ ...current, progress: event.target.value }))} placeholder="Progress %" className="campus-input rounded-[1rem] px-4 py-3" />
+                            <select
+                                value={selectedStudentBranch}
+                                onChange={(event) => setStudentForm((current) => ({ ...current, branch: event.target.value, semester: '', subjectId: '', rollNumber: '' }))}
+                                className="campus-input rounded-[1rem] px-4 py-3"
+                            >
+                                {studentBranchOptions.length === 0 ? (
+                                    <option value="">Select branch</option>
+                                ) : studentBranchOptions.map((branch) => (
+                                    <option key={branch} value={branch}>{branch}</option>
+                                ))}
+                            </select>
+                            <select
+                                value={selectedStudentSemester}
+                                onChange={(event) => setStudentForm((current) => ({ ...current, semester: event.target.value, subjectId: '', rollNumber: '' }))}
+                                className="campus-input rounded-[1rem] px-4 py-3"
+                            >
+                                {studentSemesterOptions.length === 0 ? (
+                                    <option value="">Select semester</option>
+                                ) : studentSemesterOptions.map((semester) => (
+                                    <option key={semester} value={semester}>Semester {semester}</option>
+                                ))}
+                            </select>
+                            <select
+                                value={selectedStudentSubjectId}
+                                onChange={(event) => setStudentForm((current) => ({ ...current, subjectId: event.target.value }))}
+                                className="campus-input rounded-[1rem] px-4 py-3"
+                            >
+                                {studentSubjectOptions.length === 0 ? (
+                                    <option value="">Select subject</option>
+                                ) : studentSubjectOptions.map((subject) => (
+                                    <option key={subject.id} value={subject.id}>
+                                        {subject.name} {subject.code ? `(${subject.code})` : ''}
+                                    </option>
+                                ))}
+                            </select>
+                            <select
+                                value={selectedStudentRollNumber}
+                                onChange={(event) => setStudentForm((current) => ({ ...current, rollNumber: event.target.value }))}
+                                className="campus-input rounded-[1rem] px-4 py-3"
+                                disabled={loadingClassStudents || studentRollNumberOptions.length === 0}
+                            >
+                                {studentRollNumberOptions.length === 0 ? (
+                                    <option value="">{loadingClassStudents ? 'Loading roll numbers...' : 'No enrolled students found'}</option>
+                                ) : studentRollNumberOptions.map((student) => (
+                                    <option key={student.id} value={student.rollNumber}>
+                                        {student.rollNumber} {student.name ? `| ${student.name}` : ''}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                         <button
                             onClick={() => {
-                                if (!studentForm.courseId || !studentForm.name.trim()) {
+                                if (!selectedStudentCourse || !selectedStudentBranch || !selectedStudentSemester || !selectedStudentSubjectId || !selectedStudentRollNumber) {
                                     return;
                                 }
                                 saveWorkspace((current) => ({
@@ -558,29 +906,42 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
                                         ...current.students,
                                         {
                                             id: createId('student'),
-                                            courseId: studentForm.courseId,
-                                            name: studentForm.name.trim(),
-                                            progress: Number(studentForm.progress || 0),
+                                            course: selectedStudentCourse,
+                                            branch: selectedStudentBranch,
+                                            semester: Number(selectedStudentSemester),
+                                            subjectId: selectedStudentSubjectId,
+                                            subjectName: selectedStudentSubject?.name || '',
+                                            subjectCode: selectedStudentSubject?.code || '',
+                                            studentName: selectedRosterStudent?.name || '',
+                                            rollNumber: selectedStudentRollNumber,
                                         },
                                     ],
                                 }));
-                                setStudentForm({ courseId: '', name: '', progress: '' });
+                                setStudentForm({
+                                    course: selectedStudentCourse,
+                                    branch: selectedStudentBranch,
+                                    semester: selectedStudentSemester,
+                                    subjectId: selectedStudentSubjectId,
+                                    rollNumber: '',
+                                });
                             }}
                             className="mt-4 rounded-[1rem] border border-white/10 bg-white/10 px-5 py-3 text-sm font-medium text-white"
                         >
-                            Add student snapshot
+                            Add ward record
                         </button>
                         <div className="mt-5 space-y-3">
-                            {students.length === 0 ? <EmptyState title="No student progress snapshots yet." /> : students.map((student) => (
+                            {students.length === 0 ? <EmptyState title="No ward records added yet." /> : students.map((student) => (
                                 <div key={student.id} className="rounded-[1rem] border border-white/10 bg-white/5 p-4">
                                     <div className="flex items-center justify-between gap-3">
                                         <div>
-                                            <div className="font-semibold text-white">{student.name}</div>
-                                            <div className="mt-1 text-sm text-white/60">{selectedCourseName(student.courseId)}</div>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-lg font-bold text-white">{student.progress}%</div>
-                                            <div className="text-xs uppercase tracking-[0.18em] text-white/45">Progress</div>
+                                            <div className="font-semibold text-white">{student.rollNumber || 'Ward roll number not set'}</div>
+                                            {student.studentName ? <div className="mt-1 text-sm text-white/70">{student.studentName}</div> : null}
+                                            <div className="mt-1 text-sm text-white/60">
+                                                {student.subjectName || selectedSubjectName(student)} {student.subjectCode ? `(${student.subjectCode})` : ''}
+                                            </div>
+                                            <div className="mt-1 text-xs uppercase tracking-[0.16em] text-white/45">
+                                                {student.course || 'Course'} | {student.branch || 'Branch'}{student.semester ? ` | Sem ${student.semester}` : ''}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -680,9 +1041,7 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
                     </PanelCard>
                 </div>
 
-                <PanelCard title="Notice Board" description="Official notices from the administration will appear here.">
-                    <NoticeBoard role="teacher" />
-                </PanelCard>
+                <NoticeBoard role="teacher" className="campus-panel rounded-[1.7rem] p-6" />
 
                 <PanelCard
                     title="JCUFA Portal"
@@ -712,7 +1071,7 @@ function AdminSubjectAssignmentPanel({ teachers }) {
     const [msg, setMsg] = useState('');
     const [error, setError] = useState('');
 
-    const loadData = useCallback(async () => {
+    const loadData = async () => {
         setLoading(true);
         const res = await fetch('/api/admin/assign-subjects', { credentials: 'same-origin' });
         const payload = await res.json().catch(() => ({}));
@@ -722,9 +1081,12 @@ function AdminSubjectAssignmentPanel({ teachers }) {
             setError(payload.error || 'Failed to load assignments.');
         }
         setLoading(false);
-    }, []);
+    };
 
-    useEffect(() => { void loadData(); }, [loadData]);
+    useEffect(() => {
+        const t = setTimeout(() => void loadData(), 0);
+        return () => clearTimeout(t);
+    }, []);
 
     const assignments = data?.assignments || [];
     const subjects = data?.subjects || [];
@@ -806,27 +1168,33 @@ function AdminStudentRegistrationPanel({ studentProfiles }) {
     const [regError, setRegError] = useState('');
     const [form, setForm] = useState({ userId: '', name: '', rollNumber: '', course: '', branch: '', semester: '' });
 
-    const loadStudents = useCallback(async () => {
+    const loadStudents = async () => {
         setLoadingReg(true);
         const res = await fetch('/api/admin/students', { credentials: 'same-origin' });
         const payload = await res.json().catch(() => ({}));
         if (res.ok) setRegisteredStudents(payload.students || []);
         setLoadingReg(false);
-    }, []);
+    };
 
-    useEffect(() => { void loadStudents(); }, [loadStudents]);
+    useEffect(() => {
+        const t = setTimeout(() => void loadStudents(), 0);
+        return () => clearTimeout(t);
+    }, []);
 
     const selectedProfile = studentProfiles.find(p => p.userId === form.userId);
     useEffect(() => {
         if (selectedProfile) {
-            setForm(prev => ({
-                ...prev,
-                name: selectedProfile.name || prev.name,
-                rollNumber: selectedProfile.rollNumber || prev.rollNumber,
-                course: selectedProfile.course || prev.course,
-                branch: selectedProfile.branch || prev.branch,
-                semester: selectedProfile.semester ? `${selectedProfile.semester}` : prev.semester,
-            }));
+            const t = setTimeout(() => {
+                setForm(prev => ({
+                    ...prev,
+                    name: selectedProfile.name || prev.name,
+                    rollNumber: selectedProfile.rollNumber || prev.rollNumber,
+                    course: selectedProfile.course || prev.course,
+                    branch: selectedProfile.branch || prev.branch,
+                    semester: selectedProfile.semester ? `${selectedProfile.semester}` : prev.semester,
+                }));
+            }, 0);
+            return () => clearTimeout(t);
         }
     }, [form.userId, selectedProfile]);
 

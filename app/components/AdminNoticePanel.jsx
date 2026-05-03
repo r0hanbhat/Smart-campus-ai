@@ -68,7 +68,10 @@ export default function AdminNoticePanel() {
         setLoading(false);
     }, []);
 
-    useEffect(() => { void loadNotices(); }, [loadNotices]);
+    useEffect(() => {
+        const t = setTimeout(() => void loadNotices(), 0);
+        return () => clearTimeout(t);
+    }, [loadNotices]);
 
     const handlePost = async () => {
         if (!form.title.trim() || !form.message.trim()) {

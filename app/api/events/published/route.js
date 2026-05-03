@@ -35,7 +35,7 @@ export async function GET() {
     const threeDaysOutMs = todayMs + 3 * 24 * 60 * 60 * 1000;
 
     const enriched = (events || []).map(e => {
-      const eventMs = new Date(e.proposed_date).setHours(0, 0, 0, 0);
+      const eventMs = new Date(e.proposed_date + 'T00:00:00').getTime();
       const isToday = eventMs === todayMs;
       const isPast = eventMs < todayMs;
       const isWithin3Days = eventMs <= threeDaysOutMs && !isPast && !isToday;
@@ -45,8 +45,8 @@ export async function GET() {
         user_registered: userRegistrations.has(e.id),
         is_today: isToday,
         is_past: isPast,
-        is_upcoming_live: isPast || isToday || isWithin3Days,
-        is_open_registration: !isPast && !isToday && !isWithin3Days,
+        is_upcoming_live: isToday || isWithin3Days,
+        is_open_registration: !isPast,
       };
     });
 

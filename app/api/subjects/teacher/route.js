@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getTeacherAssignedSubjects, getUserRoleProfile, listSubjectsForClass } from '@/lib/server/attendance.js';
+import { getTeacherAssignedSubjects, getUserRoleProfile, listSubjectsForClass, listTeacherCreatedSubjects } from '@/lib/server/attendance.js';
 import { getAuthenticatedUser } from '@/lib/server/supabase';
 
 export async function GET(request) {
@@ -10,7 +10,8 @@ export async function GET(request) {
         }
 
         const roleProfile = await getUserRoleProfile(supabase, user.id);
-        const role = roleProfile?.role || 'student';
+        const metadataRole = typeof user.user_metadata?.role === 'string' ? user.user_metadata.role : '';
+        const role = roleProfile?.role || metadataRole || 'student';
         if (!['teacher', 'admin'].includes(role)) {
             return NextResponse.json({ error: 'Teacher or admin access required.' }, { status: 403 });
         }
@@ -25,15 +26,18 @@ export async function GET(request) {
         // Load both in parallel:
         // - allSubjects: every subject in the DB (populates course/branch/semester dropdowns)
         // - assignedSubjects: only the subjects this teacher is allowed to mark attendance for
-        const [allSubjects, assignedSubjects] = await Promise.all([
+        const [allSubjects, assignedSubjects, createdSubjects] = await Promise.all([
             listSubjectsForClass(supabase, {}),
             role === 'admin'
                 ? listSubjectsForClass(supabase, filters)
                 : getTeacherAssignedSubjects(supabase, user.id, filters),
+            role === 'admin'
+                ? listSubjectsForClass(supabase, filters)
+                : listTeacherCreatedSubjects(supabase, user.id, filters),
         ]);
 
         // Legacy `subjects` key keeps backwards-compat with any older callers.
-        return NextResponse.json({ subjects: assignedSubjects, assignedSubjects, allSubjects });
+        return NextResponse.json({ subjects: assignedSubjects, assignedSubjects, createdSubjects, allSubjects });
     }
     catch (error) {
         console.error('Teacher Subjects API Error:', error);

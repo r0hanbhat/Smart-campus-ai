@@ -46,7 +46,7 @@ async function readProfileSnapshot(supabase, userId) {
 
 export async function PATCH(request) {
     try {
-        const { user, supabase, error: authError } = await getAuthenticatedUser();
+        const { user, supabase, error: authError } = await getAuthenticatedUser(request);
         if (authError || !user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
