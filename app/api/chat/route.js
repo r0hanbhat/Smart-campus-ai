@@ -19,7 +19,7 @@ export async function POST(req) {
             return NextResponse.json({ error: 'Invalid message' }, { status: 400 });
         }
 
-        const { user, error: authError } = await getAuthenticatedUser();
+        const { user, error: authError } = await getAuthenticatedUser(req);
         if (authError || !user?.id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }

@@ -3,17 +3,17 @@
 import { useState, useEffect, useCallback } from 'react';
 
 const STATUS_BADGE = {
-  PENDING_COORDINATOR_APPROVAL: { label: 'Pending Your Review', color: 'bg-amber-500/20 text-amber-200 border-amber-400/30' },
-  APPROVED_BY_COORDINATOR:      { label: 'Sent to Admin',       color: 'bg-cyan-500/20 text-cyan-200 border-cyan-400/30' },
-  REJECTED_BY_COORDINATOR:      { label: 'Rejected by You',     color: 'bg-red-500/15 text-red-300 border-red-400/25' },
-  APPROVED:                     { label: 'Published',           color: 'bg-emerald-500/20 text-emerald-200 border-emerald-400/30' },
-  REJECTED_BY_ADMIN:            { label: 'Rejected by Admin',   color: 'bg-red-500/15 text-red-300 border-red-400/25' },
-  WITHDRAWN:                    { label: 'Withdrawn',           color: 'bg-white/10 text-white/50 border-white/10' },
+  PENDING_COORDINATOR_APPROVAL: { label: 'Pending Your Review', color: 'bg-amber-500/20 text-amber-700 border-amber-400/30' },
+  APPROVED_BY_COORDINATOR:      { label: 'Sent to Admin',       color: 'bg-sky-500/20 text-sky-700 border-sky-400/30' },
+  REJECTED_BY_COORDINATOR:      { label: 'Rejected by You',     color: 'bg-red-500/15 text-red-600 border-red-400/25' },
+  APPROVED:                     { label: 'Published',           color: 'bg-emerald-500/20 text-emerald-700 border-emerald-400/30' },
+  REJECTED_BY_ADMIN:            { label: 'Rejected by Admin',   color: 'bg-red-500/15 text-red-600 border-red-400/25' },
+  WITHDRAWN:                    { label: 'Withdrawn',           color: 'bg-slate-100 text-slate-400 border-slate-200' },
 };
 
 function EmptyState({ title }) {
   return (
-    <div className="rounded-[1.2rem] border border-dashed border-white/10 px-4 py-8 text-center text-sm text-white/45">
+    <div className="rounded-[1.2rem] border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-400">
       {title}
     </div>
   );
@@ -42,39 +42,70 @@ function EventReviewCard({ event, onAction }) {
     setLoading(false);
   };
 
-  const badge = STATUS_BADGE[event.status] || { label: event.status, color: 'bg-white/10 text-white/50' };
+  const badge = STATUS_BADGE[event.status] || { label: event.status, color: 'bg-slate-100 text-slate-400' };
 
   return (
-    <div className="rounded-[1.2rem] border border-white/10 bg-white/5 p-5">
+    <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h4 className="text-lg font-bold text-white">{event.title}</h4>
-          <p className="mt-1 text-sm text-white/60">{event.club?.club_name}</p>
-          {event.description && <p className="mt-2 text-sm text-white/70 max-w-xl">{event.description}</p>}
+          <h4 className="text-lg font-bold text-slate-900">{event.title}</h4>
+          <p className="mt-1 text-sm text-slate-500">{event.club?.club_name}</p>
+          {event.description && <p className="mt-2 text-sm text-slate-600 max-w-xl">{event.description}</p>}
         </div>
         <span className={`rounded-full border px-3 py-1 text-xs font-medium ${badge.color}`}>{badge.label}</span>
       </div>
-      <div className="mt-4 grid gap-2 grid-cols-2 md:grid-cols-4 text-xs text-white/60">
-        <div><span className="text-white/40 block">Date</span>{event.proposed_date}</div>
-        <div><span className="text-white/40 block">Time</span>{event.time_start} – {event.time_end}</div>
-        <div><span className="text-white/40 block">Venue</span>{event.venue || 'TBD'}</div>
-        <div><span className="text-white/40 block">Expected</span>{event.expected_participants} participants</div>
+      <div className="mt-4 grid gap-2 grid-cols-2 md:grid-cols-4 text-xs text-slate-500">
+        <div><span className="text-slate-400 block">Date</span>{event.proposed_date}</div>
+        <div><span className="text-slate-400 block">Time</span>{event.time_start} – {event.time_end}</div>
+        <div><span className="text-slate-400 block">Venue</span>{event.venue || 'TBD'}</div>
+        <div><span className="text-slate-400 block">Expected</span>{event.expected_participants} participants</div>
       </div>
       {event.version > 1 && (
-        <div className="mt-3 text-xs text-amber-200/70">Re-submission v{event.version}</div>
+        <div className="mt-3 text-xs text-amber-700/70">Re-submission v{event.version}</div>
+      )}
+      {event.approvals?.length > 0 && (
+        <div className="mt-4 rounded-[1rem] border border-slate-200 bg-white/[0.04] p-4">
+          <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Approval History</div>
+          <div className="space-y-2">
+            {event.approvals.map((a, i) => {
+              const actionColor = a.action === 'approve'
+                ? 'bg-emerald-500/15 text-emerald-700 border-emerald-400/25'
+                : a.action === 'reject'
+                  ? 'bg-red-500/15 text-red-600 border-red-400/25'
+                  : 'bg-slate-100 text-slate-500 border-slate-200';
+              return (
+                <div key={i} className="flex flex-wrap items-start gap-3 rounded-[0.8rem] border border-white/[0.07] bg-slate-100 px-4 py-3">
+                  <span className="mt-0.5">{a.actor_role === 'coordinator' ? '👤' : '🔑'}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-medium text-slate-700 capitalize">{a.actor_role}</span>
+                      <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] ${actionColor}`}>{a.action}</span>
+                    </div>
+                    {a.reason && <div className="mt-1 text-xs text-slate-500 italic">&ldquo;{a.reason}&rdquo;</div>}
+                  </div>
+                  {a.acted_at && (
+                    <div className="text-xs text-slate-400 whitespace-nowrap">
+                      {new Date(a.acted_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
       {event.status === 'PENDING_COORDINATOR_APPROVAL' && (
         <div className="mt-4 flex flex-wrap gap-3">
           <button
             onClick={() => void handle('approve')}
             disabled={loading}
-            className="rounded-[1rem] bg-gradient-to-r from-cyan-500 to-emerald-400 px-5 py-2.5 text-sm font-semibold text-slate-950 disabled:opacity-50"
+            className="rounded-[1rem] bg-gradient-to-r from-sky-500 to-emerald-400 px-5 py-2.5 text-sm font-semibold text-slate-950 disabled:opacity-50"
           >
             Approve
           </button>
           <button
             onClick={() => setShowReject(!showReject)}
-            className="rounded-[1rem] border border-red-400/30 bg-red-500/10 px-5 py-2.5 text-sm font-medium text-red-200"
+            className="rounded-[1rem] border border-red-400/30 bg-red-500/10 px-5 py-2.5 text-sm font-medium text-red-600"
           >
             Reject
           </button>
@@ -92,13 +123,13 @@ function EventReviewCard({ event, onAction }) {
           <button
             onClick={() => void handle('reject')}
             disabled={loading || !reason.trim()}
-            className="rounded-[1rem] bg-red-500 px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+            className="rounded-[1rem] bg-red-500 px-5 py-2.5 text-sm font-semibold text-slate-900 disabled:opacity-50"
           >
             Confirm Rejection
           </button>
         </div>
       )}
-      {msg && <div className="mt-3 text-sm text-red-300">{msg}</div>}
+      {msg && <div className="mt-3 text-sm text-red-600">{msg}</div>}
     </div>
   );
 }
@@ -108,18 +139,18 @@ export default function CoordinatorEventPanel() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('pending');
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (all = false) => {
     setLoading(true);
-    const res = await fetch('/api/coordinator/events');
+    const res = await fetch(`/api/coordinator/events${all ? '?all=true' : ''}`);
     const data = await res.json();
     if (res.ok) setEvents(data.events || []);
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => void load(), 0);
+    const t = setTimeout(() => void load(activeTab === 'history'), 0);
     return () => clearTimeout(t);
-  }, [load]);
+  }, [load, activeTab]);
 
   const handleAction = (eventId) => {
     setEvents(prev => prev.filter(e => e.id !== eventId));
@@ -138,15 +169,15 @@ export default function CoordinatorEventPanel() {
               onClick={() => setActiveTab(key)}
               className={`rounded-full px-4 py-2 text-sm font-medium transition ${
                 activeTab === key
-                  ? 'bg-gradient-to-r from-cyan-500 to-emerald-400 text-slate-950'
-                  : 'border border-white/10 bg-white/5 text-white/65 hover:bg-white/10 hover:text-white'
+                  ? 'bg-gradient-to-r from-sky-500 to-emerald-400 text-slate-950'
+                  : 'border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
               {label}
             </button>
           ))}
         </div>
-        <button onClick={() => void load()} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-white">
+        <button onClick={() => void load()} className="rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-900">
           Refresh
         </button>
       </div>
@@ -158,8 +189,8 @@ export default function CoordinatorEventPanel() {
           : <div className="space-y-4">{pending.map(e => <EventReviewCard key={e.id} event={e} onAction={handleAction} />)}</div>
       ) : (
         history.length === 0
-          ? <EmptyState title="No reviewed events yet." />
-          : <div className="space-y-4">{history.map(e => <EventReviewCard key={e.id} event={e} />)}</div>
+          ? <EmptyState title="No reviewed events yet. Events you approve or reject will appear here." />
+          : <div className="campus-scroll max-h-[36rem] space-y-4 overflow-y-auto pr-1">{history.map(e => <EventReviewCard key={e.id} event={e} />)}</div>
       )}
     </div>
   );

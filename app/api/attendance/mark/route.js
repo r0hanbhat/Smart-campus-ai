@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getUserRoleProfile, markAttendanceRecords } from '@/lib/server/attendance.js';
+import { getUserRoleProfile, listTeacherCreatedSubjects, markAttendanceRecords } from '@/lib/server/attendance.js';
 import { createSupabaseServiceRoleClient, getAuthenticatedUser } from '@/lib/server/supabase';
 
 export async function POST(request) {
@@ -25,13 +25,9 @@ export async function POST(request) {
         }
 
         if (role === 'teacher') {
-            // Only enforce assignment restriction when the teacher has been formally
-            // assigned to at least one subject.  If no assignments exist yet the
-            // teacher can mark any subject (admin can formalise assignments later).
-            const { getTeacherAssignedSubjects } = await import('@/lib/server/attendance.js');
-            const assigned = await getTeacherAssignedSubjects(supabase, user.id).catch(() => []);
-            if (assigned.length > 0 && !assigned.some((s) => s.id === subjectId)) {
-                return NextResponse.json({ error: 'You are not assigned to this subject. Ask admin to assign it to you.' }, { status: 403 });
+            const createdSubjects = await listTeacherCreatedSubjects(supabase, user.id).catch(() => []);
+            if (!createdSubjects.some((s) => s.id === subjectId)) {
+                return NextResponse.json({ error: 'Teacher access is limited to subjects you created.' }, { status: 403 });
             }
         }
 

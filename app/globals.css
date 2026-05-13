@@ -1,23 +1,43 @@
 @import "tailwindcss";
 
 :root {
-  --background: #160f24;
-  --foreground: #f5f0ff;
-  --surface: rgba(19, 13, 33, 0.68);
-  --surface-strong: rgba(23, 16, 39, 0.82);
-  --surface-soft: rgba(255, 255, 255, 0.06);
-  --line: rgba(255, 255, 255, 0.12);
-  --line-strong: rgba(255, 255, 255, 0.22);
-  --glow-a: rgba(103, 232, 249, 0.28);
-  --glow-b: rgba(244, 114, 182, 0.2);
-  --glow-c: rgba(196, 181, 253, 0.24);
+  --background: #ffffff;
+  --foreground: #1e293b;
+  --surface: #ffffff;
+  --surface-strong: #f8fafc;
+  --surface-soft: #f1f5f9;
+  --line: #e2e8f0;
+  --line-strong: #cbd5e1;
+
+  /* Synapse-inspired vibrant accent palette */
+  --accent-pink: #e91e84;
+  --accent-magenta: #d6006e;
+  --accent-cyan: #00c8ff;
+  --accent-yellow: #ffc107;
+  --accent-orange: #ff6b35;
+  --accent-purple: #7c3aed;
+  --accent-blue: #3b82f6;
+  --accent-emerald: #10b981;
+  --accent-coral: #ff6b6b;
+  --accent-navy: #0f172a;
+
+  /* gradients */
+  --gradient-primary: linear-gradient(135deg, #e91e84, #7c3aed, #00c8ff);
+  --gradient-hero: linear-gradient(135deg, #e91e84 0%, #7c3aed 50%, #00c8ff 100%);
+  --gradient-cta: linear-gradient(135deg, #e91e84, #ff6b35);
+  --gradient-cool: linear-gradient(135deg, #00c8ff, #3b82f6);
+  --gradient-warm: linear-gradient(135deg, #ffc107, #ff6b35, #e91e84);
+  --gradient-card-1: linear-gradient(135deg, #fef3c7, #fde68a);
+  --gradient-card-2: linear-gradient(135deg, #dbeafe, #bfdbfe);
+  --gradient-card-3: linear-gradient(135deg, #fce7f3, #fbcfe8);
+  --gradient-card-4: linear-gradient(135deg, #d1fae5, #a7f3d0);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 }
 
 * {
@@ -31,46 +51,121 @@ html {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   min-height: 100vh;
-  background-image:
-    radial-gradient(circle at 15% 20%, rgba(34, 211, 238, 0.22), transparent 28%),
-    radial-gradient(circle at 85% 15%, rgba(244, 114, 182, 0.16), transparent 24%),
-    radial-gradient(circle at 75% 78%, rgba(192, 132, 252, 0.18), transparent 22%),
-    linear-gradient(145deg, #140d21 0%, #241448 45%, #4d135f 100%);
-  background-attachment: fixed;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.01em;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ────────────── Synapse-style decorative blobs ────────────── */
+
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  pointer-events: none;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.3;
+  z-index: -1;
+  animation: float 16s ease-in-out infinite alternate;
 }
 
 body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.42;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
-  background-size: 72px 72px;
-  mask-image: radial-gradient(circle at center, black 35%, transparent 92%);
+  top: -6rem;
+  right: -4rem;
+  width: 28rem;
+  height: 28rem;
+  background: radial-gradient(circle, rgba(233, 30, 132, 0.45), rgba(124, 58, 237, 0.25), transparent);
+}
+
+body::after {
+  bottom: -8rem;
+  left: -6rem;
+  width: 32rem;
+  height: 32rem;
+  background: radial-gradient(circle, rgba(0, 200, 255, 0.35), rgba(59, 130, 246, 0.2), transparent);
 }
 
 h1,
 h2,
 h3,
 h4 {
-  font-family: "Palatino Linotype", Georgia, serif;
-  letter-spacing: 0.015em;
+  font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  color: #0f172a;
 }
 
 ::selection {
-  background: rgba(103, 232, 249, 0.3);
-  color: white;
+  background: rgba(233, 30, 132, 0.2);
+  color: #0f172a;
 }
+
+/* ────────────── Floating decorative shapes ────────────── */
+
+.campus-decor-dots {
+  position: absolute;
+  width: 80px;
+  height: 80px;
+  background-image: radial-gradient(circle, var(--accent-pink) 2px, transparent 2px);
+  background-size: 12px 12px;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.campus-decor-circle {
+  position: absolute;
+  border-radius: 9999px;
+  border: 3px solid;
+  opacity: 0.25;
+  pointer-events: none;
+  animation: float 12s ease-in-out infinite alternate;
+}
+
+.campus-decor-cross {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  opacity: 0.3;
+  pointer-events: none;
+  animation: spin-slow 20s linear infinite;
+}
+
+.campus-decor-cross::before,
+.campus-decor-cross::after {
+  content: "";
+  position: absolute;
+  background: var(--accent-cyan);
+  border-radius: 2px;
+}
+
+.campus-decor-cross::before {
+  width: 100%;
+  height: 3px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.campus-decor-cross::after {
+  height: 100%;
+  width: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+@keyframes spin-slow {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ────────────── Shell & ambient glow ────────────── */
 
 .campus-shell {
   position: relative;
   isolation: isolate;
+  background: #ffffff;
 }
 
 .campus-shell::before,
@@ -79,118 +174,588 @@ h4 {
   position: fixed;
   z-index: -1;
   border-radius: 9999px;
-  filter: blur(70px);
+  filter: blur(100px);
   pointer-events: none;
+  animation: float 14s ease-in-out infinite alternate;
 }
 
 .campus-shell::before {
-  top: 6rem;
-  left: -6rem;
-  width: 18rem;
-  height: 18rem;
-  background: var(--glow-a);
+  top: -5rem;
+  left: -10rem;
+  width: 26rem;
+  height: 26rem;
+  background: rgba(233, 30, 132, 0.12);
 }
 
 .campus-shell::after {
-  right: -5rem;
-  bottom: 10rem;
-  width: 20rem;
-  height: 20rem;
-  background: var(--glow-b);
+  right: -8rem;
+  bottom: -5rem;
+  width: 24rem;
+  height: 24rem;
+  background: rgba(0, 200, 255, 0.1);
 }
 
+@keyframes float {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(20px, 15px) scale(1.06); }
+}
+
+/* ────────────── Panel system — bright Synapse-style cards ────────────── */
+
 .campus-panel {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
-    var(--surface);
-  border: 1px solid var(--line);
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
   box-shadow:
-    0 24px 60px rgba(5, 1, 15, 0.32),
-    inset 0 1px 0 rgba(255, 255, 255, 0.07);
-  backdrop-filter: blur(22px);
+    0 4px 24px rgba(0, 0, 0, 0.06),
+    0 1px 3px rgba(0, 0, 0, 0.04);
+  border-radius: 1.5rem;
 }
 
 .campus-panel-strong {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
-    var(--surface-strong);
-  border: 1px solid var(--line-strong);
+  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%) !important;
+  border: 1px solid #e2e8f0 !important;
   box-shadow:
-    0 28px 80px rgba(7, 2, 18, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(24px);
+    0 8px 40px rgba(0, 0, 0, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.04);
+  border-radius: 1.5rem;
+}
+
+/* Hero panel — the vibrant top section */
+.campus-hero-panel {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.2);
+  border-radius: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.campus-hero-panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(135deg, transparent, rgba(233, 30, 132, 0.06), rgba(0, 200, 255, 0.08));
+  pointer-events: none;
 }
 
 .campus-soft-card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* Colorful stat cards */
+.campus-stat-card {
+  border-radius: 1.25rem;
+  padding: 1.25rem;
+  border: 1px solid transparent;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.campus-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.campus-stat-card.pink {
+  background: linear-gradient(135deg, #fce7f3, #fdf2f8);
+  border-color: #f9a8d4;
+}
+
+.campus-stat-card.blue {
+  background: linear-gradient(135deg, #dbeafe, #eff6ff);
+  border-color: #93c5fd;
+}
+
+.campus-stat-card.yellow {
+  background: linear-gradient(135deg, #fef3c7, #fffbeb);
+  border-color: #fcd34d;
+}
+
+.campus-stat-card.emerald {
+  background: linear-gradient(135deg, #d1fae5, #ecfdf5);
+  border-color: #6ee7b7;
+}
+
+.campus-stat-card.purple {
+  background: linear-gradient(135deg, #ede9fe, #f5f3ff);
+  border-color: #c4b5fd;
 }
 
 .campus-grid {
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 24px 24px;
+    radial-gradient(circle, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
+/* ────────────── Typography ────────────── */
+
 .campus-kicker {
-  color: rgba(196, 181, 253, 0.88);
-  font-size: 0.72rem;
+  color: var(--accent-pink) !important;
+  font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.34em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
 }
+
+/* ────────────── Chip / Badge — vibrant ────────────── */
 
 .campus-chip {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  padding: 0.55rem 0.95rem;
-  color: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
+  border: 1px solid rgba(233, 30, 132, 0.2);
+  background: rgba(233, 30, 132, 0.08) !important;
+  padding: 0.45rem 0.85rem;
+  color: #334155 !important;
+  font-size: 0.8rem;
+  font-weight: 500;
 }
 
+.campus-chip-cyan {
+  border-color: rgba(0, 200, 255, 0.3);
+  background: rgba(0, 200, 255, 0.08) !important;
+  color: #0284c7 !important;
+}
+
+.campus-chip-yellow {
+  border-color: rgba(255, 193, 7, 0.3);
+  background: rgba(255, 193, 7, 0.1) !important;
+  color: #92400e !important;
+}
+
+/* ────────────── Input — bright with accent focus ────────────── */
+
 .campus-input {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.05);
-  color: white;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border: 1.5px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  color: #1e293b !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .campus-input:focus {
   outline: none;
-  border-color: rgba(103, 232, 249, 0.5);
+  border-color: var(--accent-pink);
   box-shadow:
-    0 0 0 3px rgba(103, 232, 249, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    0 0 0 3px rgba(233, 30, 132, 0.12),
+    0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
-.campus-button {
-  background-image: linear-gradient(135deg, #22d3ee 0%, #a855f7 52%, #ec4899 100%);
+.campus-input option {
+  background: #ffffff;
+  color: #1e293b;
+}
+
+/* Dark mode inputs for dark panels */
+.dark-input {
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.dark-input:focus {
+  outline: none;
+  border-color: var(--accent-cyan);
   box-shadow:
-    0 12px 28px rgba(126, 34, 206, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    0 0 0 3px rgba(0, 200, 255, 0.15),
+    0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.dark-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+/* ────────────── Primary button — vibrant pink gradient ────────────── */
+
+.campus-button {
+  background-image: var(--gradient-cta) !important;
+  background-color: #e91e84 !important;
+  color: white !important;
+  font-weight: 600;
+  box-shadow:
+    0 4px 16px rgba(233, 30, 132, 0.3),
+    0 2px 8px rgba(255, 107, 53, 0.2);
+  transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
 }
 
 .campus-button:hover {
-  filter: brightness(1.05);
+  filter: brightness(1.08) saturate(1.1);
+  transform: translateY(-2px);
+  box-shadow:
+    0 8px 28px rgba(233, 30, 132, 0.35),
+    0 4px 12px rgba(255, 107, 53, 0.25);
+}
+
+.campus-button:active {
+  transform: translateY(0);
+}
+
+/* Secondary CTA — outlined style */
+.campus-button-outline {
+  background: transparent;
+  color: #0f172a;
+  font-weight: 600;
+  border: 2px solid #0f172a;
+  transition: all 0.2s ease;
+}
+
+.campus-button-outline:hover {
+  background: #0f172a;
+  color: #ffffff;
   transform: translateY(-1px);
 }
 
+/* ────────────── Colored tag pills ────────────── */
+
+.tag-pink {
+  background: rgba(233, 30, 132, 0.12);
+  color: #be185d;
+  border: 1px solid rgba(233, 30, 132, 0.2);
+  border-radius: 9999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.tag-cyan {
+  background: rgba(0, 200, 255, 0.1);
+  color: #0369a1;
+  border: 1px solid rgba(0, 200, 255, 0.2);
+  border-radius: 9999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.tag-yellow {
+  background: rgba(255, 193, 7, 0.15);
+  color: #92400e;
+  border: 1px solid rgba(255, 193, 7, 0.25);
+  border-radius: 9999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.tag-purple {
+  background: rgba(124, 58, 237, 0.1);
+  color: #6d28d9;
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  border-radius: 9999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* ────────────── Custom scrollbar ────────────── */
+
 .campus-scroll::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 6px;
+  height: 6px;
 }
 
 .campus-scroll::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.14);
+  background: #cbd5e1;
   border-radius: 9999px;
+  transition: background 0.2s;
+}
+
+.campus-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-pink);
 }
 
 .campus-scroll::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/* ────────────── Gradient text utility ────────────── */
+
+.gradient-text {
+  background: var(--gradient-hero);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-warm {
+  background: var(--gradient-warm);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ────────────── Bottom stats bar (Synapse-style) ────────────── */
+
+.campus-stats-bar {
+  background: linear-gradient(135deg, #fdf2f8 0%, #eff6ff 50%, #fefce8 100%);
+  border: 1px solid #e2e8f0;
+  border-radius: 1.25rem;
+  padding: 1rem 2rem;
+}
+
+.campus-stats-bar .stat-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.campus-stats-bar .stat-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+}
+
+/* ────────────── Vibrant role cards for landing ────────────── */
+
+.role-card {
+  background: #ffffff;
+  border: 2px solid #e2e8f0;
+  border-radius: 1.5rem;
+  padding: 1.75rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.role-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-radius: 1.5rem 1.5rem 0 0;
+}
+
+.role-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+}
+
+.role-card.student::before { background: var(--gradient-cool); }
+.role-card.student:hover { border-color: #93c5fd; }
+
+.role-card.teacher::before { background: linear-gradient(135deg, #10b981, #34d399); }
+.role-card.teacher:hover { border-color: #6ee7b7; }
+
+.role-card.admin::before { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
+.role-card.admin:hover { border-color: #fcd34d; }
+
+.role-card.club::before { background: linear-gradient(135deg, #8b5cf6, #a78bfa); }
+.role-card.club:hover { border-color: #c4b5fd; }
+
+/* ────────────── Auth page bright panels ────────────── */
+
+.auth-info-panel {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+  border-radius: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-info-panel::before {
+  content: "";
+  position: absolute;
+  top: -40%;
+  right: -20%;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(233, 30, 132, 0.15), transparent);
+  border-radius: 9999px;
+  pointer-events: none;
+}
+
+.auth-info-panel::after {
+  content: "";
+  position: absolute;
+  bottom: -30%;
+  left: -15%;
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, rgba(0, 200, 255, 0.12), transparent);
+  border-radius: 9999px;
+  pointer-events: none;
+}
+
+.auth-form-panel {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 2rem;
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.08),
+    0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+/* ────────────── Tab toggle — bright pills ────────────── */
+
+.campus-tab-group {
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 1.2rem;
+  padding: 0.35rem;
+}
+
+.campus-tab-active {
+  background: linear-gradient(135deg, #e91e84, #7c3aed) !important;
+  color: #ffffff !important;
+  border-radius: 1rem;
+  box-shadow: 0 4px 12px rgba(233, 30, 132, 0.25);
+}
+
+.campus-tab-inactive {
+  color: #334155 !important;
+  border-radius: 1rem;
+  transition: all 0.2s;
+}
+
+.campus-tab-inactive:hover {
+  color: #0f172a !important;
+  background: rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Light presentation pass for dashboard and auth surfaces */
+
+.campus-light-mode {
+  color: #0f172a;
+}
+
+.campus-light-mode .campus-panel,
+.campus-light-mode .campus-panel-strong,
+.campus-light-mode .auth-form-panel,
+.campus-light-mode .auth-info-panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.98) 100%) !important;
+  border-color: #dbe5f0 !important;
+  box-shadow:
+    0 18px 50px rgba(15, 23, 42, 0.08),
+    0 4px 12px rgba(15, 23, 42, 0.04);
+}
+
+.campus-light-mode .campus-panel-strong {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(241, 245, 249, 0.98) 100%),
+    radial-gradient(circle at top right, rgba(233, 30, 132, 0.08), transparent 35%),
+    radial-gradient(circle at bottom left, rgba(0, 200, 255, 0.08), transparent 35%) !important;
+}
+
+.campus-light-mode .auth-info-panel::before,
+.campus-light-mode .auth-info-panel::after {
+  opacity: 1;
+}
+
+.campus-light-mode .text-white,
+.campus-light-mode .text-white\/90,
+.campus-light-mode .text-white\/80,
+.campus-light-mode .text-white\/70,
+.campus-light-mode .text-white\/65,
+.campus-light-mode .text-white\/60,
+.campus-light-mode .text-white\/55,
+.campus-light-mode .text-white\/50,
+.campus-light-mode .text-white\/45,
+.campus-light-mode .text-white\/40,
+.campus-light-mode .text-white\/35 {
+  color: #334155 !important;
+}
+
+.campus-light-mode h1,
+.campus-light-mode h2,
+.campus-light-mode h3,
+.campus-light-mode h4,
+.campus-light-mode .font-bold,
+.campus-light-mode .font-semibold {
+  color: #0f172a;
+}
+
+.campus-light-mode .campus-kicker {
+  color: #db2777 !important;
+}
+
+.campus-light-mode .bg-white\/5,
+.campus-light-mode .bg-white\/10,
+.campus-light-mode .bg-white\/15,
+.campus-light-mode .bg-black\/20,
+.campus-light-mode .bg-black\/35,
+.campus-light-mode .bg-slate-950\/95,
+.campus-light-mode .bg-slate-950\/90,
+.campus-light-mode .bg-slate-950\/55,
+.campus-light-mode .bg-slate-800\/85,
+.campus-light-mode .bg-slate-800 {
+  background: rgba(248, 250, 252, 0.96) !important;
+}
+
+.campus-light-mode .border-white\/20,
+.campus-light-mode .border-white\/15,
+.campus-light-mode .border-white\/10,
+.campus-light-mode .border-white\/\[0\.07\] {
+  border-color: #dbe5f0 !important;
+}
+
+.campus-light-mode .hover\:bg-white\/10:hover,
+.campus-light-mode .hover\:bg-white\/15:hover,
+.campus-light-mode .hover\:bg-white\/20:hover {
+  background: rgba(226, 232, 240, 0.88) !important;
+}
+
+.campus-light-mode .campus-soft-card {
+  background: #f8fafc !important;
+  border-color: #dbe5f0 !important;
+  color: #334155 !important;
+}
+
+.campus-light-mode .campus-chip {
+  color: #475569 !important;
+  border-color: rgba(233, 30, 132, 0.16);
+  background: rgba(233, 30, 132, 0.07) !important;
+}
+
+.campus-light-mode .campus-input,
+.campus-light-mode input[type="text"],
+.campus-light-mode input[type="email"],
+.campus-light-mode input[type="password"],
+.campus-light-mode input[type="number"],
+.campus-light-mode input[type="tel"] {
+  color: #0f172a !important;
+}
+
+.campus-light-mode .campus-input::placeholder,
+.campus-light-mode input::placeholder {
+  color: #94a3b8 !important;
+}
+
+.campus-light-mode .campus-button,
+.campus-light-mode .campus-button *,
+.campus-light-mode [class*="bg-gradient-to-r"][class*="text-white"] {
+  color: #ffffff !important;
+}
+
+.campus-light-mode .text-cyan-300,
+.campus-light-mode .text-cyan-200,
+.campus-light-mode .text-cyan-100 {
+  color: #0f766e !important;
+}
+
+.campus-light-mode .text-emerald-300,
+.campus-light-mode .text-emerald-200,
+.campus-light-mode .text-emerald-100 {
+  color: #166534 !important;
+}
+
+.campus-light-mode .text-amber-300,
+.campus-light-mode .text-amber-200 {
+  color: #92400e !important;
+}
+
+.campus-light-mode .text-purple-300,
+.campus-light-mode .text-purple-200 {
+  color: #7c3aed !important;
 }

@@ -57,6 +57,9 @@ export function useReminderScheduler({ reminders, deadlines, isDataLoaded, userE
     const scheduleNotificationForReminder = async (reminder) => {
         if (!reminder?.date || !reminder?.time || !reminder?.eventName)
             return false;
+        const offsets = Array.isArray(reminder?.offsets) && reminder.offsets.length > 0
+            ? reminder.offsets.filter((offset) => Number.isFinite(offset) && offset >= 0)
+            : [6, 2, 0];
         return scheduleNotificationMoments({
             itemId: reminder.id,
             title: 'Reminder Alert',
@@ -65,7 +68,7 @@ export function useReminderScheduler({ reminders, deadlines, isDataLoaded, userE
                 : `${reminder.eventName} is coming up in ${offsetHours} hours.`,
             date: reminder.date,
             time: reminder.time,
-            offsets: [6, 2, 0],
+            offsets,
         });
     };
     const scheduleNotificationForDeadline = async (deadline) => {

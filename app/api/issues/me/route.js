@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/supabase';
-import { applyIssueSatisfaction, createIssueRecord, normalizeIssueCenter } from '@/lib/smart-campus/issues.js';
+import { applyIssueSatisfaction, createIssueRecord, normalizeIssueCenter, normalizeIssueNotificationPreferences } from '@/lib/smart-campus/issues.js';
+import { sendIssueConfirmationEmail } from '@/lib/server/issue-response-mailer.js';
 
 async function readIssueCenter(supabase, userId) {
     const { data, error } = await supabase
@@ -80,13 +81,28 @@ export async function POST(request) {
                 return NextResponse.json({ error: 'Title and description are required.' }, { status: 400 });
             }
 
+            // Strip base64 dataUrl from evidence before persisting — dataUrls can be
+            // several MB each and will cause Supabase statement timeouts / row-size
+            // failures. Keep the uploaded storage URL so evidence remains visible
+            // after the page reloads.
+            const evidenceForDb = Array.isArray(body?.evidence)
+                ? body.evidence.map((item) => ({
+                    id: item?.id || '',
+                    type: item?.type || 'image',
+                    name: item?.name || 'evidence',
+                    mimeType: item?.mimeType || 'image/jpeg',
+                    url: item?.url || '',
+                    dataUrl: '', // intentionally cleared before DB write
+                }))
+                : [];
+
             const nextIssue = createIssueRecord({
                 title,
                 description,
                 category: typeof body?.category === 'string' ? body.category : 'Other',
                 priority: typeof body?.priority === 'string' ? body.priority : 'medium',
                 location: body?.location,
-                evidence: Array.isArray(body?.evidence) ? body.evidence : [],
+                evidence: evidenceForDb,
                 reporter: {
                     userId: user.id,
                     name: typeof body?.reporterName === 'string' ? body.reporterName : (user.email?.split('@')[0] || 'Student'),
@@ -101,16 +117,28 @@ export async function POST(request) {
             };
 
             await writeIssueCenter(supabase, user.id, nextIssueCenter, existingProfile);
+
+            // Send confirmation email — non-blocking, never fails the API response.
+            if (nextIssue.notificationPreferences?.email && user.email) {
+                sendIssueConfirmationEmail({
+                    to: user.email,
+                    studentName: nextIssue.reporter.name,
+                    issueTitle: nextIssue.title,
+                    issueId: nextIssue.id,
+                    category: nextIssue.category,
+                    priority: nextIssue.priority,
+                    department: nextIssue.department,
+                    slaDueAt: nextIssue.slaDueAt,
+                }).catch((mailErr) => console.error('Issue confirmation email failed:', mailErr));
+            }
+
             return NextResponse.json(nextIssueCenter);
         }
 
         if (action === 'updatePreferences') {
             const nextIssueCenter = {
                 ...issueCenter,
-                notificationPreferences: {
-                    ...issueCenter.notificationPreferences,
-                    ...(body?.notificationPreferences && typeof body.notificationPreferences === 'object' ? body.notificationPreferences : {}),
-                },
+                notificationPreferences: normalizeIssueNotificationPreferences(body?.notificationPreferences),
             };
             await writeIssueCenter(supabase, user.id, nextIssueCenter, existingProfile);
             return NextResponse.json(nextIssueCenter);

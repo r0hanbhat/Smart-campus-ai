@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/supabase';
+import { createSupabaseServiceRoleClient } from '@/lib/server/supabase';
+import { sendIssueResponseEmail } from '@/lib/server/issue-response-mailer';
 import { createClient } from '@supabase/supabase-js';
 import { applyAdminIssueUpdate, calculateIssueAnalytics, matchesIssueSearch, normalizeIssueCenter, sortIssuesForAdmin } from '@/lib/smart-campus/issues.js';
 
@@ -37,6 +39,28 @@ function buildIssueDataset(userStateRows, profiles) {
     });
 
     return issues;
+}
+
+async function resolveReporterEmail(serviceClient, issue) {
+    if (issue?.reporter?.email) {
+        return issue.reporter.email;
+    }
+
+    const reporterId = issue?.reporter?.userId;
+    if (!reporterId) {
+        return '';
+    }
+
+    try {
+        const { data, error } = await serviceClient.auth.admin.getUserById(reporterId);
+        if (error) {
+            return '';
+        }
+        return data?.user?.email || '';
+    }
+    catch {
+        return '';
+    }
 }
 
 export async function GET(request) {
@@ -126,9 +150,14 @@ export async function POST(request) {
         const updates = body?.updates && typeof body.updates === 'object' ? body.updates : {};
         const note = typeof body?.note === 'string' ? body.note : '';
         const updatedIssues = [];
+        const serviceClient = createSupabaseServiceRoleClient();
+        let emailError = '';
+        let emailsSent = 0;
 
         for (const issueRef of issueRefs) {
-            const { data: userState, error: userStateError } = await supabase
+            // Use serviceClient (service role) — the admin's own supabase client is
+            // blocked by RLS from reading/writing other users' user_state rows.
+            const { data: userState, error: userStateError } = await serviceClient
                 .from('user_state')
                 .select('profile')
                 .eq('user_id', issueRef.userId)
@@ -157,7 +186,7 @@ export async function POST(request) {
                 reportedIssues: nextIssues,
             };
 
-            const { error: updateError } = await supabase
+            const { error: updateError } = await serviceClient
                 .from('user_state')
                 .upsert({
                     user_id: issueRef.userId,
@@ -172,9 +201,35 @@ export async function POST(request) {
             }
 
             updatedIssues.push(updatedIssue);
+
+            if (updatedIssue.notificationPreferences?.email) {
+                const recipientEmail = await resolveReporterEmail(serviceClient, updatedIssue);
+                if (recipientEmail) {
+                    try {
+                        await sendIssueResponseEmail({
+                            to: recipientEmail,
+                            studentName: updatedIssue.reporter.name,
+                            issueTitle: updatedIssue.title,
+                            issueStatus: updatedIssue.status,
+                            department: updatedIssue.department,
+                            resolutionSummary: updatedIssue.resolutionSummary,
+                            note,
+                        });
+                        emailsSent += 1;
+                    }
+                    catch (error) {
+                        emailError = error instanceof Error ? error.message : 'Failed to send issue response email.';
+                    }
+                }
+            }
         }
 
-        return NextResponse.json({ success: true, updatedIssues });
+        return NextResponse.json({
+            success: true,
+            updatedIssues,
+            emailsSent,
+            emailError: emailError || undefined,
+        });
     }
     catch (error) {
         console.error('Admin Issues POST Error:', error);

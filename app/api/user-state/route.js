@@ -10,10 +10,24 @@ export async function POST(request) {
         }
 
         const body = await request.json();
+        const { data: existingRow, error: existingRowError } = await supabase
+            .from('user_state')
+            .select('profile')
+            .eq('user_id', user.id)
+            .maybeSingle();
 
-        // Build the upsert payload directly — no pre-SELECT needed.
-        // The issueCenter sub-key is preserved by the client (it passes through
-        // the existing profile object) so we don't need a server-side merge.
+        if (existingRowError && existingRowError.code !== 'PGRST116') {
+            return NextResponse.json({ error: existingRowError.message || 'Failed to load existing user state.' }, { status: 500 });
+        }
+
+        const existingProfile = existingRow?.profile && typeof existingRow.profile === 'object' ? existingRow.profile : {};
+        const nextProfile = {
+            ...existingProfile,
+            ...(body?.profile && typeof body.profile === 'object' ? body.profile : {}),
+        };
+
+        // Merge with the stored profile so issueCenter and other feature state
+        // survive routine autosaves from the main dashboard.
         const savePayload = {
             user_id: user.id,
             events: Array.isArray(body?.events) ? body.events : [],
@@ -22,7 +36,7 @@ export async function POST(request) {
             deadlines: Array.isArray(body?.deadlines) ? body.deadlines : [],
             planner_entries: Array.isArray(body?.plannerEntries) ? body.plannerEntries : [],
             teacher_workspace: body?.teacherWorkspace && typeof body.teacherWorkspace === 'object' ? body.teacherWorkspace : null,
-            profile: body?.profile && typeof body.profile === 'object' ? body.profile : {},
+            profile: nextProfile,
             messages: Array.isArray(body?.messages) ? body.messages : [],
         };
 

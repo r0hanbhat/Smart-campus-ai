@@ -16,16 +16,16 @@ const CATEGORIES = [
 ];
 
 const CATEGORY_COLORS = {
-    attendance: 'text-cyan-300 bg-cyan-500/10 border-cyan-400/20',
-    exam:       'text-violet-300 bg-violet-500/10 border-violet-400/20',
-    hostel:     'text-amber-300 bg-amber-500/10 border-amber-400/20',
-    fees:       'text-emerald-300 bg-emerald-500/10 border-emerald-400/20',
-    syllabus:   'text-blue-300 bg-blue-500/10 border-blue-400/20',
-    calendar:   'text-pink-300 bg-pink-500/10 border-pink-400/20',
-    clubs:      'text-fuchsia-300 bg-fuchsia-500/10 border-fuchsia-400/20',
+    attendance: 'text-sky-600 bg-sky-500/10 border-sky-400/20',
+    exam:       'text-violet-700 bg-violet-500/10 border-violet-400/20',
+    hostel:     'text-amber-700 bg-amber-500/10 border-amber-400/20',
+    fees:       'text-emerald-700 bg-emerald-500/10 border-emerald-400/20',
+    syllabus:   'text-blue-700 bg-blue-500/10 border-blue-400/20',
+    calendar:   'text-pink-700 bg-pink-500/10 border-pink-400/20',
+    clubs:      'text-fuchsia-700 bg-fuchsia-500/10 border-fuchsia-400/20',
     circular:   'text-orange-300 bg-orange-500/10 border-orange-400/20',
     help:       'text-teal-300 bg-teal-500/10 border-teal-400/20',
-    general:    'text-slate-300 bg-slate-500/10 border-slate-400/20',
+    general:    'text-slate-500 bg-slate-500/10 border-slate-400/20',
 };
 
 function CategoryPill({ category }) {
@@ -95,7 +95,7 @@ function AddKnowledgeTab() {
         <div className="space-y-4">
             <div className="grid gap-3 md:grid-cols-2">
                 <div>
-                    <div className="mb-1 text-xs uppercase tracking-[0.16em] text-white/45">Document Title *</div>
+                    <div className="mb-1 text-xs uppercase tracking-[0.16em] text-slate-400">Document Title *</div>
                     <input
                         value={form.title}
                         onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
@@ -104,7 +104,7 @@ function AddKnowledgeTab() {
                     />
                 </div>
                 <div>
-                    <div className="mb-1 text-xs uppercase tracking-[0.16em] text-white/45">Source / Author</div>
+                    <div className="mb-1 text-xs uppercase tracking-[0.16em] text-slate-400">Source / Author</div>
                     <input
                         value={form.source}
                         onChange={e => setForm(f => ({ ...f, source: e.target.value }))}
@@ -116,7 +116,7 @@ function AddKnowledgeTab() {
 
             <div className="grid gap-3 md:grid-cols-2">
                 <div>
-                    <div className="mb-1 text-xs uppercase tracking-[0.16em] text-white/45">Category *</div>
+                    <div className="mb-1 text-xs uppercase tracking-[0.16em] text-slate-400">Category *</div>
                     <select
                         value={form.category}
                         onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
@@ -128,7 +128,7 @@ function AddKnowledgeTab() {
                     </select>
                 </div>
                 <div>
-                    <div className="mb-1 text-xs uppercase tracking-[0.16em] text-white/45">Chunk Size (chars)</div>
+                    <div className="mb-1 text-xs uppercase tracking-[0.16em] text-slate-400">Chunk Size (chars)</div>
                     <select
                         value={chunkSize}
                         onChange={e => setChunkSize(Number(e.target.value))}
@@ -142,20 +142,20 @@ function AddKnowledgeTab() {
             </div>
 
             <div>
-                <div className="mb-1 text-xs uppercase tracking-[0.16em] text-white/45">Document Content * (paste the full text)</div>
+                <div className="mb-1 text-xs uppercase tracking-[0.16em] text-slate-400">Document Content * (paste the full text)</div>
                 <textarea
                     value={form.content}
                     onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
                     placeholder="Paste the full document text here. It will be automatically split into chunks and embedded."
                     className="campus-input min-h-[14rem] w-full rounded-[1rem] px-4 py-3 font-mono text-sm"
                 />
-                <div className="mt-1 text-right text-xs text-white/35">
+                <div className="mt-1 text-right text-xs text-slate-400">
                     {form.content.length} chars · ≈ {Math.ceil(form.content.length / chunkSize)} chunk(s)
                 </div>
             </div>
 
             <div>
-                <div className="mb-1 text-xs uppercase tracking-[0.16em] text-white/45">Metadata (optional JSON)</div>
+                <div className="mb-1 text-xs uppercase tracking-[0.16em] text-slate-400">Metadata (optional JSON)</div>
                 <input
                     value={form.metadata}
                     onChange={e => setForm(f => ({ ...f, metadata: e.target.value }))}
@@ -167,18 +167,18 @@ function AddKnowledgeTab() {
             <button
                 onClick={handleIngest}
                 disabled={ingesting || !form.title.trim() || !form.content.trim()}
-                className="rounded-[1rem] bg-gradient-to-r from-cyan-500 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 disabled:opacity-50"
+                className="rounded-[1rem] bg-gradient-to-r from-sky-500 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 disabled:opacity-50"
             >
                 {ingesting ? '⏳ Ingesting & Embedding…' : '🧠 Ingest into Knowledge Base'}
             </button>
 
             {error && (
-                <div className="rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>
+                <div className="rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">{error}</div>
             )}
             {result && (
-                <div className="rounded-[1rem] border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+                <div className="rounded-[1rem] border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
                     ✅ Ingested {result.inserted} chunk(s) successfully.
-                    {result.failed > 0 && <span className="ml-2 text-amber-300">{result.failed} failed.</span>}
+                    {result.failed > 0 && <span className="ml-2 text-amber-700">{result.failed} failed.</span>}
                 </div>
             )}
         </div>
@@ -236,37 +236,37 @@ function BrowseChunksTab() {
                     <option value="">All categories</option>
                     {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
-                <span className="text-sm text-white/45">{total} chunk(s) total</span>
-                <button onClick={() => void load()} className="ml-auto rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/15">
+                <span className="text-sm text-slate-400">{total} chunk(s) total</span>
+                <button onClick={() => void load()} className="ml-auto rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-900 hover:bg-slate-150">
                     Refresh
                 </button>
             </div>
 
             {loading ? (
-                <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-20 animate-pulse rounded-[1rem] bg-white/5" />)}</div>
+                <div className="space-y-2">{[1,2,3].map(i => <div key={i} className="h-20 animate-pulse rounded-[1rem] bg-slate-50" />)}</div>
             ) : chunks.length === 0 ? (
-                <div className="rounded-[1rem] border border-dashed border-white/10 py-12 text-center text-sm text-white/45">
+                <div className="rounded-[1rem] border border-dashed border-slate-200 py-12 text-center text-sm text-slate-400">
                     No knowledge chunks yet. Use the &quot;Add Knowledge&quot; tab to ingest documents.
                 </div>
             ) : (
-                <div className="space-y-2">
+                <div className="campus-scroll max-h-[24rem] space-y-2 overflow-y-auto pr-1">
                     {chunks.map(chunk => (
-                        <div key={chunk.id} className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">
+                        <div key={chunk.id} className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
                             <div className="flex flex-wrap items-start justify-between gap-2">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <CategoryPill category={chunk.category} />
-                                    <span className="text-sm font-semibold text-white">{chunk.title || chunk.source}</span>
-                                    <span className="text-xs text-white/40">chunk #{chunk.chunk_index}</span>
+                                    <span className="text-sm font-semibold text-slate-900">{chunk.title || chunk.source}</span>
+                                    <span className="text-xs text-slate-400">chunk #{chunk.chunk_index}</span>
                                 </div>
                                 <button
                                     onClick={() => handleDelete(chunk.id)}
                                     disabled={deleting === chunk.id}
-                                    className="rounded-full border border-red-400/20 bg-red-500/10 px-3 py-1 text-xs text-red-200 hover:bg-red-500/20 disabled:opacity-50"
+                                    className="rounded-full border border-red-400/20 bg-red-500/10 px-3 py-1 text-xs text-red-600 hover:bg-red-500/20 disabled:opacity-50"
                                 >
                                     {deleting === chunk.id ? 'Removing…' : 'Remove'}
                                 </button>
                             </div>
-                            <p className="mt-2 line-clamp-2 text-xs leading-5 text-white/55">{chunk.content}</p>
+                            <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{chunk.content}</p>
                         </div>
                     ))}
                 </div>
@@ -274,9 +274,9 @@ function BrowseChunksTab() {
 
             {totalPages > 1 && (
                 <div className="flex items-center justify-center gap-2">
-                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-white disabled:opacity-40">← Prev</button>
-                    <span className="text-sm text-white/55">Page {page} / {totalPages}</span>
-                    <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-white disabled:opacity-40">Next →</button>
+                    <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-900 disabled:opacity-40">← Prev</button>
+                    <span className="text-sm text-slate-500">Page {page} / {totalPages}</span>
+                    <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-900 disabled:opacity-40">Next →</button>
                 </div>
             )}
         </div>
@@ -320,33 +320,33 @@ function TestRetrievalTab() {
                 <button
                     onClick={handleTest}
                     disabled={testing || !query.trim()}
-                    className="rounded-[1rem] bg-gradient-to-r from-violet-500 to-cyan-400 px-6 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                    className="rounded-[1rem] bg-gradient-to-r from-violet-500 to-sky-400 px-6 py-3 text-sm font-semibold text-slate-900 disabled:opacity-50"
                 >
                     {testing ? 'Searching…' : 'Test'}
                 </button>
             </div>
 
-            {error && <div className="rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>}
+            {error && <div className="rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">{error}</div>}
 
             {results !== null && (
                 results.length === 0 ? (
-                    <div className="rounded-[1rem] border border-dashed border-white/10 py-8 text-center text-sm text-white/45">
+                    <div className="rounded-[1rem] border border-dashed border-slate-200 py-8 text-center text-sm text-slate-400">
                         No matching chunks found. Try a lower similarity threshold or ingest relevant content.
                     </div>
                 ) : (
-                    <div className="space-y-3">
-                        <div className="text-xs text-white/45">{results.length} chunk(s) matched</div>
+                    <div className="campus-scroll max-h-[24rem] space-y-3 overflow-y-auto pr-1">
+                        <div className="text-xs text-slate-400">{results.length} chunk(s) matched</div>
                         {results.map((c, i) => (
-                            <div key={c.id} className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">
+                            <div key={c.id} className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
                                 <div className="flex flex-wrap items-center gap-2 mb-2">
-                                    <span className="text-xs font-bold text-cyan-400">#{i + 1}</span>
+                                    <span className="text-xs font-bold text-sky-400">#{i + 1}</span>
                                     <CategoryPill category={c.category} />
-                                    <span className="text-sm font-semibold text-white">{c.title || c.source}</span>
-                                    <span className="ml-auto rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300">
+                                    <span className="text-sm font-semibold text-slate-900">{c.title || c.source}</span>
+                                    <span className="ml-auto rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-700">
                                         {Math.round(c.similarity * 100)}% match
                                     </span>
                                 </div>
-                                <p className="text-xs leading-5 text-white/65 whitespace-pre-wrap">{c.content}</p>
+                                <p className="text-xs leading-5 text-slate-500 whitespace-pre-wrap">{c.content}</p>
                             </div>
                         ))}
                     </div>
@@ -369,25 +369,25 @@ export default function AdminKnowledgePanel() {
     return (
         <div className="campus-panel rounded-[2rem] p-6 space-y-5">
             <div>
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                     🧠 Campus Knowledge Base
-                    <span className="rounded-full bg-violet-500/15 border border-violet-400/20 px-2.5 py-0.5 text-xs font-medium text-violet-300">RAG</span>
+                    <span className="rounded-full bg-violet-500/15 border border-violet-400/20 px-2.5 py-0.5 text-xs font-medium text-violet-700">RAG</span>
                 </h3>
-                <p className="mt-1 text-sm text-white/55">
+                <p className="mt-1 text-sm text-slate-500">
                     Ingest official documents so the AI chatbot answers campus questions accurately — no hallucination.
                 </p>
             </div>
 
             {/* Tab nav */}
-            <div className="flex gap-2 rounded-[1.2rem] border border-white/10 bg-white/5 p-1.5">
+            <div className="flex gap-2 rounded-[1.2rem] border border-slate-200 bg-slate-50 p-1.5">
                 {TABS.map(t => (
                     <button
                         key={t.id}
                         onClick={() => setActiveTab(t.id)}
                         className={`flex-1 rounded-[0.9rem] py-2 text-sm font-medium transition ${
                             activeTab === t.id
-                                ? 'bg-white/15 text-white'
-                                : 'text-white/55 hover:text-white'
+                                ? 'bg-slate-150 text-slate-900'
+                                : 'text-slate-500 hover:text-slate-900'
                         }`}
                     >
                         {t.label}

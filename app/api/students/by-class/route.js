@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getUserRoleProfile, listStudentsByProgram } from '@/lib/server/attendance.js';
+import { getUserRoleProfile, listStudentsByProgram, listTeacherCreatedSubjects } from '@/lib/server/attendance.js';
 import { createSupabaseServiceRoleClient, getAuthenticatedUser } from '@/lib/server/supabase';
 
 export async function GET(request) {
@@ -10,7 +10,8 @@ export async function GET(request) {
         }
 
         const roleProfile = await getUserRoleProfile(supabase, user.id);
-        if (!['teacher', 'admin'].includes(roleProfile?.role || 'student')) {
+        const role = roleProfile?.role || 'student';
+        if (!['teacher', 'admin'].includes(role)) {
             return NextResponse.json({ error: 'Teacher or admin access required.' }, { status: 403 });
         }
 
@@ -24,6 +25,17 @@ export async function GET(request) {
         }
 
         const semesterNum = Number.parseInt(semester, 10);
+        if (role === 'teacher') {
+            const subjectsForClass = await listTeacherCreatedSubjects(supabase, user.id, {
+                course,
+                branch,
+                semester: semesterNum,
+            });
+
+            if (subjectsForClass.length === 0) {
+                return NextResponse.json({ error: 'Teacher access is limited to classes where you created a subject.' }, { status: 403 });
+            }
+        }
 
         // Pull from both sources:
         // 1. students table = canonical attendance roster

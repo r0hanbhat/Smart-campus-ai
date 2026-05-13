@@ -5,7 +5,7 @@ import { ATTENDANCE_ALERT_THRESHOLD } from '@/lib/smart-campus/attendance.js';
 
 function EmptyState({ title }) {
     return (
-        <div className="rounded-[1.2rem] border border-dashed border-white/10 px-4 py-8 text-center text-sm text-white/45">
+        <div className="rounded-[1.2rem] border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-400">
             {title}
         </div>
     );
@@ -14,8 +14,8 @@ function EmptyState({ title }) {
 function StatCard({ label, value, accentClassName }) {
     return (
         <div className={`rounded-[1.3rem] border p-4 ${accentClassName}`}>
-            <div className="text-xs uppercase tracking-[0.18em] text-white/55">{label}</div>
-            <div className="mt-3 text-3xl font-bold text-white">{value}</div>
+            <div className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</div>
+            <div className="mt-3 text-3xl font-bold text-slate-900">{value}</div>
         </div>
     );
 }
@@ -62,9 +62,10 @@ export function TeacherAttendancePanel() {
     const [selectedBranch, setSelectedBranch] = useState('');
     const [selectedSemester, setSelectedSemester] = useState('');
     const [selectedSubjectId, setSelectedSubjectId] = useState('');
-    // assignedSubjects = only this teacher's assigned subjects (drives subject dropdown)
+    // assignedSubjects is kept for the legacy response key, but for teachers the
+    // API now scopes it to subjects created by the logged-in teacher.
     const [assignedSubjects, setAssignedSubjects] = useState([]);
-    // allSubjects from DB = used only for subject dropdown
+    // allSubjects is also scoped by the API for teacher accounts.
     const [allSubjects, setAllSubjects] = useState([]);
     const [attendanceDate, setAttendanceDate] = useState(getTodayDateKey);
     const [students, setStudents] = useState([]);
@@ -117,10 +118,7 @@ export function TeacherAttendancePanel() {
     const semesterOptions = semesterNumbers.map(String);
     const effectiveSelectedSemester = semesterOptions.includes(String(selectedSemester)) ? String(selectedSemester) : (semesterOptions[0] || '');
 
-    // Subject options: assigned subjects for this teacher (filtered to current class).
-    // If teacher has no assignments yet, fall back to all subjects from DB.
-    const subjectPool = assignedSubjects.length > 0 ? assignedSubjects : allSubjects;
-    const subjectOptions = subjectPool.filter((e) => e.course === effectiveSelectedCourse
+    const subjectOptions = allSubjects.filter((e) => e.course === effectiveSelectedCourse
         && e.branch === effectiveSelectedBranch
         && String(e.semester) === effectiveSelectedSemester);
     const effectiveSelectedSubjectId = subjectOptions.some((e) => e.id === selectedSubjectId) ? selectedSubjectId : (subjectOptions[0]?.id || '');
@@ -302,20 +300,20 @@ export function TeacherAttendancePanel() {
             </div>
 
             {selectedSubject ? (
-                <div className="rounded-[1.2rem] border border-white/10 bg-white/5 px-5 py-4 text-sm text-white/75">
+                <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-600">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                            <div className="font-semibold text-white">{selectedSubject.title}</div>
+                            <div className="font-semibold text-slate-900">{selectedSubject.title}</div>
                             <div className="mt-1">{selectedSubject.code || 'No subject code'} | {selectedSubject.course} | {selectedSubject.branch} | Semester {selectedSubject.semester}</div>
                         </div>
                         {!isAssignedSubject && assignedSubjects.length > 0 && (
-                            <div className="rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-200">
+                            <div className="rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-700">
                                 Not in your assigned subjects
                             </div>
                         )}
                         {isAssignedSubject && (
-                            <div className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-200">
-                                Assigned to you
+                            <div className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-700">
+                                Created by you
                             </div>
                         )}
                     </div>
@@ -323,36 +321,36 @@ export function TeacherAttendancePanel() {
             ) : null}
 
             {message ? (
-                <div className={`rounded-[1rem] border px-4 py-3 text-sm ${message.startsWith('Failed') || message.startsWith('Teacher') ? 'border-red-400/30 bg-red-500/10 text-red-100' : 'border-cyan-400/20 bg-cyan-500/10 text-cyan-100'}`}>
+                <div className={`rounded-[1rem] border px-4 py-3 text-sm ${message.startsWith('Failed') || message.startsWith('Teacher') ? 'border-red-400/30 bg-red-500/10 text-red-600' : 'border-sky-400/20 bg-sky-500/10 text-sky-700'}`}>
                     {message}
                 </div>
             ) : null}
 
             {visibleReport ? (
                 <div className="grid gap-4 md:grid-cols-3">
-                    <StatCard label="Attendance Rate" value={`${visibleReport.summary?.percentage ?? 0}%`} accentClassName="border-cyan-400/20 bg-cyan-500/10" />
+                    <StatCard label="Attendance Rate" value={`${visibleReport.summary?.percentage ?? 0}%`} accentClassName="border-sky-400/20 bg-sky-500/10" />
                     <StatCard label="Present Marks" value={visibleReport.summary?.presentSessions ?? 0} accentClassName="border-emerald-400/20 bg-emerald-500/10" />
                     <StatCard label="Absent Marks" value={visibleReport.summary?.absentSessions ?? 0} accentClassName="border-amber-400/20 bg-amber-500/10" />
                 </div>
             ) : null}
 
-            {loadingAssignments ? <EmptyState title="Loading subjects..." /> : allSubjects.length === 0 ? <EmptyState title="No subjects found. Run the attendance schema SQL in Supabase first." /> : !effectiveSelectedSubjectId ? <EmptyState title="Select course → branch → semester → subject to load the student list." /> : loadingStudents ? <EmptyState title="Loading enrolled students..." /> : visibleStudents.length === 0 ? <EmptyState title="No students are registered for this class yet. Ask admin to register them." /> : (
-                <div className="overflow-hidden rounded-[1.3rem] border border-white/10 bg-white/5">
-                    <div className="grid grid-cols-[1fr_1.8fr_auto] gap-3 border-b border-white/10 px-5 py-4 text-xs uppercase tracking-[0.18em] text-white/45">
+            {loadingAssignments ? <EmptyState title="Loading subjects..." /> : allSubjects.length === 0 ? <EmptyState title="No subjects found in the database. Ask admin to create subjects first." /> : !effectiveSelectedSubjectId ? <EmptyState title="Select course → branch → semester → subject to load the student list." /> : subjectOptions.length === 0 ? <EmptyState title="No subjects have been created for this course / branch / semester yet." /> : loadingStudents ? <EmptyState title="Loading enrolled students..." /> : visibleStudents.length === 0 ? <EmptyState title="No students are registered for this class yet. Ask admin to register them." /> : (
+                <div className="overflow-hidden rounded-[1.3rem] border border-slate-200 bg-slate-50">
+                    <div className="grid grid-cols-[1fr_1.8fr_auto] gap-3 border-b border-slate-200 px-5 py-4 text-xs uppercase tracking-[0.18em] text-slate-400">
                         <div>Roll No</div>
                         <div>Name</div>
                         <div>Present / Absent</div>
                     </div>
                     <div className="divide-y divide-white/10">
                         {visibleStudents.map((student) => (
-                            <div key={student.id} className="grid grid-cols-[1fr_1.8fr_auto] gap-3 px-5 py-4 text-sm text-white/80">
-                                <div className="font-semibold text-white">{student.roll_number}</div>
+                            <div key={student.id} className="grid grid-cols-[1fr_1.8fr_auto] gap-3 px-5 py-4 text-sm text-slate-700">
+                                <div className="font-semibold text-slate-900">{student.roll_number}</div>
                                 <div>{student.name}</div>
-                                <div className="flex overflow-hidden rounded-[0.9rem] border border-white/10">
-                                    <button onClick={() => setDraftStatuses((current) => ({ ...current, [student.id]: 'present' }))} className={`px-4 py-2 font-medium ${draftStatuses[student.id] === 'present' ? 'bg-emerald-400 text-slate-950' : 'bg-white/5 text-white/70'}`}>
+                                <div className="flex overflow-hidden rounded-[0.9rem] border border-slate-200">
+                                    <button onClick={() => setDraftStatuses((current) => ({ ...current, [student.id]: 'present' }))} className={`px-4 py-2 font-medium ${draftStatuses[student.id] === 'present' ? 'bg-emerald-400 text-slate-950' : 'bg-slate-50 text-slate-600'}`}>
                                         Present
                                     </button>
-                                    <button onClick={() => setDraftStatuses((current) => ({ ...current, [student.id]: 'absent' }))} className={`px-4 py-2 font-medium ${draftStatuses[student.id] === 'absent' ? 'bg-rose-400 text-slate-950' : 'bg-white/5 text-white/70'}`}>
+                                    <button onClick={() => setDraftStatuses((current) => ({ ...current, [student.id]: 'absent' }))} className={`px-4 py-2 font-medium ${draftStatuses[student.id] === 'absent' ? 'bg-rose-400 text-slate-950' : 'bg-slate-50 text-slate-600'}`}>
                                         Absent
                                     </button>
                                 </div>
@@ -363,12 +361,12 @@ export function TeacherAttendancePanel() {
             )}
 
             <div className="flex flex-wrap gap-3">
-                <button onClick={() => void handleSave()} disabled={!effectiveSelectedSubjectId || visibleStudents.length === 0 || saving || loadingReport} className="rounded-[1rem] bg-gradient-to-r from-cyan-500 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50">
+                <button onClick={() => void handleSave()} disabled={!effectiveSelectedSubjectId || visibleStudents.length === 0 || saving || loadingReport} className="rounded-[1rem] bg-gradient-to-r from-sky-500 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50">
                     {saving ? 'Submitting...' : `Submit attendance${visibleStudents.length > 0 ? ` (${visibleStudents.length})` : ''}`}
                 </button>
                 {visibleStudents.length > 0 && (
                     <>
-                        <button onClick={() => setDraftStatuses(() => Object.fromEntries(visibleStudents.map(s => [s.id, 'present'])))} className="rounded-[1rem] border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-100 hover:bg-emerald-500/20">
+                        <button onClick={() => setDraftStatuses(() => Object.fromEntries(visibleStudents.map(s => [s.id, 'present'])))} className="rounded-[1rem] border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-700 hover:bg-emerald-500/20">
                             Mark All Present
                         </button>
                         <button onClick={() => setDraftStatuses(() => Object.fromEntries(visibleStudents.map(s => [s.id, 'absent'])))} className="rounded-[1rem] border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm font-medium text-rose-100 hover:bg-rose-500/20">
@@ -376,21 +374,21 @@ export function TeacherAttendancePanel() {
                         </button>
                     </>
                 )}
-                <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/60">
+                <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
                     Default is present. Toggle absent students, then submit.
                 </div>
             </div>
 
             {visibleReport?.studentSummaries?.length > 0 ? (
-                <div className="rounded-[1.2rem] border border-white/10 bg-white/5 p-5">
-                    <div className="text-sm font-semibold text-white">Attendance report for this subject</div>
+                <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-5">
+                    <div className="text-sm font-semibold text-slate-900">Attendance report for this subject</div>
                     <div className="mt-4 space-y-3">
                         {visibleReport.studentSummaries.map((student) => (
-                            <div key={student.studentId} className={`rounded-[1rem] border px-4 py-3 text-sm ${student.summary.isBelowThreshold ? 'border-amber-400/25 bg-amber-500/10 text-amber-100' : 'border-white/10 bg-slate-950/25 text-white/80'}`}>
+                            <div key={student.studentId} className={`rounded-[1rem] border px-4 py-3 text-sm ${student.summary.isBelowThreshold ? 'border-amber-400/25 bg-amber-500/10 text-amber-700' : 'border-slate-200 bg-slate-800/25 text-slate-700'}`}>
                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                     <div>
-                                        <div className="font-semibold text-white">{student.studentName}</div>
-                                        <div className="mt-1 text-xs uppercase tracking-[0.18em] text-white/50">{student.rollNumber}</div>
+                                        <div className="font-semibold text-slate-900">{student.studentName}</div>
+                                        <div className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-400">{student.rollNumber}</div>
                                     </div>
                                     <div>{student.summary.percentage}% attendance</div>
                                 </div>
@@ -446,47 +444,47 @@ export function StudentAttendanceTab({ userId }) {
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                         <div className="campus-kicker">My Attendance</div>
-                        <h2 className="mt-3 text-3xl font-bold text-white">See subject-wise percentage and complete attendance history</h2>
-                        <p className="mt-3 max-w-3xl text-sm leading-7 text-white/65">
+                        <h2 className="mt-3 text-3xl font-bold text-slate-900">See subject-wise percentage and complete attendance history</h2>
+                        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-500">
                             This dashboard shows your attendance percentage for each subject, session-by-session history, and an alert when your attendance drops below the safe threshold.
                         </p>
                     </div>
-                    <div className="rounded-[1.4rem] border border-white/10 bg-white/5 px-5 py-4 text-sm text-white/75">
-                        Warning threshold: <span className="font-semibold text-white">{ATTENDANCE_ALERT_THRESHOLD}%</span>
+                    <div className="rounded-[1.4rem] border border-slate-200 bg-slate-50 px-5 py-4 text-sm text-slate-600">
+                        Warning threshold: <span className="font-semibold text-slate-900">{ATTENDANCE_ALERT_THRESHOLD}%</span>
                     </div>
                 </div>
             </div>
 
             {error ? (
-                <div className="rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                <div className="rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">
                     {error}
                 </div>
             ) : null}
 
             {!loading && !error && report && report.academicProfile && (report.academicProfile.course || report.academicProfile.branch || report.academicProfile.semester) ? (
                 <div className="flex flex-wrap gap-3">
-                    {report.academicProfile.course && <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-100">{report.academicProfile.course}</span>}
-                    {report.academicProfile.branch && <span className="rounded-full border border-purple-400/20 bg-purple-500/10 px-3 py-1 text-xs text-purple-100">{report.academicProfile.branch}</span>}
-                    {report.academicProfile.semester && <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70">Semester {report.academicProfile.semester}</span>}
-                    {report.academicProfile.rollNumber && <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-white/70">{report.academicProfile.rollNumber}</span>}
+                    {report.academicProfile.course && <span className="rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1 text-xs text-sky-700">{report.academicProfile.course}</span>}
+                    {report.academicProfile.branch && <span className="rounded-full border border-purple-400/20 bg-purple-500/10 px-3 py-1 text-xs text-purple-700">{report.academicProfile.branch}</span>}
+                    {report.academicProfile.semester && <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">Semester {report.academicProfile.semester}</span>}
+                    {report.academicProfile.rollNumber && <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600">{report.academicProfile.rollNumber}</span>}
                 </div>
             ) : null}
 
             {!loading && !error && report && report.subjects?.length === 0 && !report.academicProfile?.course ? (
-                <div className="rounded-[1.2rem] border border-amber-400/25 bg-amber-500/10 px-5 py-4 text-sm text-amber-100">
+                <div className="rounded-[1.2rem] border border-amber-400/25 bg-amber-500/10 px-5 py-4 text-sm text-amber-700">
                     <div className="font-semibold">Your academic profile is incomplete.</div>
-                    <div className="mt-1 text-amber-100/80">Go to Profile and set your Course, Branch, and Semester. Subjects and attendance will auto-load once those fields are saved.</div>
+                    <div className="mt-1 text-amber-700/80">Go to Profile and set your Course, Branch, and Semester. Subjects and attendance will auto-load once those fields are saved.</div>
                 </div>
             ) : null}
 
             <div className="grid gap-4 md:grid-cols-3">
-                <StatCard label="Overall Attendance" value={`${report?.overall?.percentage ?? 0}%`} accentClassName="border-cyan-400/20 bg-cyan-500/10" />
+                <StatCard label="Overall Attendance" value={`${report?.overall?.percentage ?? 0}%`} accentClassName="border-sky-400/20 bg-sky-500/10" />
                 <StatCard label="Present Classes" value={report?.overall?.presentSessions ?? 0} accentClassName="border-emerald-400/20 bg-emerald-500/10" />
-                <StatCard label="Total Classes" value={report?.overall?.totalSessions ?? 0} accentClassName="border-white/10 bg-white/5" />
+                <StatCard label="Total Classes" value={report?.overall?.totalSessions ?? 0} accentClassName="border-slate-200 bg-slate-50" />
             </div>
 
             {report?.overall?.isBelowThreshold ? (
-                <div className="rounded-[1.2rem] border border-amber-400/25 bg-amber-500/10 px-5 py-4 text-sm text-amber-100">
+                <div className="rounded-[1.2rem] border border-amber-400/25 bg-amber-500/10 px-5 py-4 text-sm text-amber-700">
                     Your overall attendance is below {ATTENDANCE_ALERT_THRESHOLD}%. Attend upcoming classes consistently to recover your percentage.
                 </div>
             ) : null}
@@ -495,19 +493,19 @@ export function StudentAttendanceTab({ userId }) {
                 <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
                     <div className="space-y-4">
                         {report.subjects.map((subject) => (
-                            <button key={subject.subjectId} onClick={() => setSelectedSubjectId(subject.subjectId)} className={`block w-full rounded-[1.6rem] border p-5 text-left ${subject.summary.isBelowThreshold ? 'border-amber-400/25 bg-amber-500/10' : 'border-white/10 bg-white/5'} ${selectedSubject?.subjectId === subject.subjectId ? 'ring-2 ring-cyan-400/50' : ''}`}>
+                            <button key={subject.subjectId} onClick={() => setSelectedSubjectId(subject.subjectId)} className={`block w-full rounded-[1.6rem] border p-5 text-left ${subject.summary.isBelowThreshold ? 'border-amber-400/25 bg-amber-500/10' : 'border-slate-200 bg-slate-50'} ${selectedSubject?.subjectId === subject.subjectId ? 'ring-2 ring-sky-400/50' : ''}`}>
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                     <div>
-                                        <div className="text-xl font-bold text-white">{subject.subjectName}</div>
-                                        <div className="mt-2 text-sm text-white/60">{subject.subjectCode || 'No subject code'} | Semester {subject.semester || '-'} | {subject.branch || 'No branch'}</div>
+                                        <div className="text-xl font-bold text-slate-900">{subject.subjectName}</div>
+                                        <div className="mt-2 text-sm text-slate-500">{subject.subjectCode || 'No subject code'} | Semester {subject.semester || '-'} | {subject.branch || 'No branch'}</div>
                                     </div>
                                     <div className="text-right">
-                                        <div className="text-3xl font-bold text-white">{subject.summary.percentage}%</div>
-                                        <div className="text-xs uppercase tracking-[0.18em] text-white/45">Attendance</div>
+                                        <div className="text-3xl font-bold text-slate-900">{subject.summary.percentage}%</div>
+                                        <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Attendance</div>
                                     </div>
                                 </div>
                                 {subject.summary.isBelowThreshold ? (
-                                    <div className="mt-4 rounded-[1rem] border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                                    <div className="mt-4 rounded-[1rem] border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-700">
                                         This subject is below {ATTENDANCE_ALERT_THRESHOLD}% attendance.
                                     </div>
                                 ) : null}
@@ -516,22 +514,22 @@ export function StudentAttendanceTab({ userId }) {
                     </div>
 
                     <div className="campus-panel rounded-[1.8rem] p-6">
-                        <h3 className="text-xl font-bold text-white">Attendance history</h3>
+                        <h3 className="text-xl font-bold text-slate-900">Attendance history</h3>
                         {!selectedSubject ? <div className="mt-5"><EmptyState title="Select a subject to inspect the detailed history." /></div> : (
                             <div className="mt-5 space-y-4">
-                                <div className="rounded-[1.2rem] border border-white/10 bg-white/5 p-4">
-                                    <div className="font-semibold text-white">{selectedSubject.subjectName}</div>
-                                    <div className="mt-1 text-sm text-white/60">{selectedSubject.subjectCode || 'No subject code'} | {selectedSubject.course || report?.academicProfile?.course || 'No course'} | {selectedSubject.branch || report?.academicProfile?.branch || 'No branch'} | Semester {selectedSubject.semester || report?.academicProfile?.semester || '-'}</div>
+                                <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
+                                    <div className="font-semibold text-slate-900">{selectedSubject.subjectName}</div>
+                                    <div className="mt-1 text-sm text-slate-500">{selectedSubject.subjectCode || 'No subject code'} | {selectedSubject.course || report?.academicProfile?.course || 'No course'} | {selectedSubject.branch || report?.academicProfile?.branch || 'No branch'} | Semester {selectedSubject.semester || report?.academicProfile?.semester || '-'}</div>
                                     <div className="mt-4 grid gap-3 md:grid-cols-3">
-                                        <StatCard label="Subject %" value={`${selectedSubject.summary.percentage}%`} accentClassName="border-cyan-400/20 bg-cyan-500/10" />
+                                        <StatCard label="Subject %" value={`${selectedSubject.summary.percentage}%`} accentClassName="border-sky-400/20 bg-sky-500/10" />
                                         <StatCard label="Present" value={selectedSubject.summary.presentSessions} accentClassName="border-emerald-400/20 bg-emerald-500/10" />
-                                        <StatCard label="Total" value={selectedSubject.summary.totalSessions} accentClassName="border-white/10 bg-white/5" />
+                                        <StatCard label="Total" value={selectedSubject.summary.totalSessions} accentClassName="border-slate-200 bg-slate-50" />
                                     </div>
                                     <div className="mt-4 space-y-2">
                                         {selectedSubject.history.length === 0 ? <EmptyState title="No classes recorded yet." /> : selectedSubject.history.map((entry) => (
-                                            <div key={entry.id} className="flex items-center justify-between rounded-[0.9rem] border border-white/10 bg-slate-950/30 px-4 py-3 text-sm text-white/80">
+                                            <div key={entry.id} className="flex items-center justify-between rounded-[0.9rem] border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700">
                                                 <span>{entry.date}</span>
-                                                <span className={`rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${entry.status === 'present' ? 'bg-emerald-500/20 text-emerald-100' : 'bg-rose-500/20 text-rose-100'}`}>
+                                                <span className={`rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${entry.status === 'present' ? 'bg-emerald-500/20 text-emerald-700' : 'bg-rose-500/20 text-rose-100'}`}>
                                                     {entry.status}
                                                 </span>
                                             </div>

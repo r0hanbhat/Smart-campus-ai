@@ -27,6 +27,22 @@ export async function POST(request) {
             return NextResponse.json({ error: 'id, name, code, course, branch, and semester are required.' }, { status: 400 });
         }
 
+        if (effectiveRole === 'teacher') {
+            const { data: existingSubject, error: existingSubjectError } = await supabase
+                .from('subjects')
+                .select('id, teacher_user_id')
+                .eq('id', id)
+                .maybeSingle();
+
+            if (existingSubjectError) {
+                return NextResponse.json({ error: existingSubjectError.message }, { status: 500 });
+            }
+
+            if (existingSubject && existingSubject.teacher_user_id !== user.id) {
+                return NextResponse.json({ error: 'You can only update subjects you created.' }, { status: 403 });
+            }
+        }
+
         const subjectPayload = {
             id,
             name,
@@ -66,7 +82,12 @@ export async function DELETE(request) {
         const id = new URL(request.url).searchParams.get('id')?.trim() || '';
         if (!id) return NextResponse.json({ error: 'Subject ID is required.' }, { status: 400 });
 
-        const { error } = await supabase.from('subjects').delete().eq('id', id);
+        let deleteQuery = supabase.from('subjects').delete().eq('id', id);
+        if (effectiveRole === 'teacher') {
+            deleteQuery = deleteQuery.eq('teacher_user_id', user.id);
+        }
+
+        const { error } = await deleteQuery;
         if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
         return NextResponse.json({ success: true });

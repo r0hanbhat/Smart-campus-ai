@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { buildSubjectAttendancePayload, getSubjectRecordById, getTeacherAssignedSubjects, getUserRoleProfile, listAttendanceRecords, listStudentsByProgram } from '@/lib/server/attendance.js';
+import { buildSubjectAttendancePayload, getSubjectRecordById, getUserRoleProfile, listAttendanceRecords, listStudentsByProgram, listTeacherCreatedSubjects } from '@/lib/server/attendance.js';
 import { getAuthenticatedUser } from '@/lib/server/supabase';
 
 function getTodayDateKey() {
@@ -34,12 +34,15 @@ export async function GET(request, context) {
             return NextResponse.json({ error: 'Subject not found.' }, { status: 404 });
         }
 
-        // Decorate with whether this teacher is formally assigned (for UI badge only).
-        const assignedSubjects = role === 'teacher'
-            ? await getTeacherAssignedSubjects(supabase, user.id).catch(() => [])
+        const createdSubjects = role === 'teacher'
+            ? await listTeacherCreatedSubjects(supabase, user.id).catch(() => [])
             : null;
-        const isAssigned = role === 'admin' || !assignedSubjects
-            || assignedSubjects.some((s) => s.id === subjectId);
+        const isCreatedByTeacher = role === 'admin' || createdSubjects?.some((s) => s.id === subjectId);
+        if (!isCreatedByTeacher) {
+            return NextResponse.json({ error: 'Teacher access is limited to subjects you created.' }, { status: 403 });
+        }
+
+        const isAssigned = role === 'admin' || createdSubjects?.some((s) => s.id === subjectId);
 
         const selectedDate = new URL(request.url).searchParams.get('date') || getTodayDateKey();
         const [records, students] = await Promise.all([

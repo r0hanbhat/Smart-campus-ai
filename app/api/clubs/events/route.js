@@ -61,7 +61,7 @@ export async function POST(request) {
     if (!session?.club_id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
-    const { title, description, proposed_date, time_start, time_end, venue, expected_participants } = body;
+    const { title, description, proposed_date, time_start, time_end, venue, expected_participants, registration_starts, event_end_date } = body;
 
     if (!title?.trim() || !proposed_date || !time_start || !time_end) {
       return NextResponse.json({ error: 'title, proposed_date, time_start, time_end are required' }, { status: 400 });
@@ -80,6 +80,8 @@ export async function POST(request) {
         venue: venue?.trim() || null,
         expected_participants: expected_participants || 0,
         status: 'PENDING_COORDINATOR_APPROVAL',
+        registration_starts: registration_starts || null,
+        event_end_date: event_end_date || proposed_date,
       })
       .select()
       .single();

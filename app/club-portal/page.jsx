@@ -4,12 +4,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
 const STATUS_COLORS = {
-  PENDING_COORDINATOR_APPROVAL: 'bg-amber-500/20 text-amber-200 border-amber-400/30',
-  APPROVED_BY_COORDINATOR:      'bg-cyan-500/20 text-cyan-200 border-cyan-400/30',
-  REJECTED_BY_COORDINATOR:      'bg-red-500/15 text-red-300 border-red-400/25',
-  APPROVED:                     'bg-emerald-500/20 text-emerald-200 border-emerald-400/30',
-  REJECTED_BY_ADMIN:            'bg-red-500/15 text-red-300 border-red-400/25',
-  WITHDRAWN:                    'bg-white/10 text-white/50 border-white/10',
+  PENDING_COORDINATOR_APPROVAL: 'bg-amber-500/20 text-amber-700 border-amber-400/30',
+  APPROVED_BY_COORDINATOR:      'bg-sky-500/20 text-sky-700 border-sky-400/30',
+  REJECTED_BY_COORDINATOR:      'bg-red-500/15 text-red-600 border-red-400/25',
+  APPROVED:                     'bg-emerald-500/20 text-emerald-700 border-emerald-400/30',
+  REJECTED_BY_ADMIN:            'bg-red-500/15 text-red-600 border-red-400/25',
+  WITHDRAWN:                    'bg-slate-100 text-slate-400 border-slate-200',
 };
 const STATUS_LABELS = {
   PENDING_COORDINATOR_APPROVAL: 'Awaiting Coordinator',
@@ -21,27 +21,28 @@ const STATUS_LABELS = {
 };
 
 const EMPTY_FORM = {
-  title: '', description: '', proposed_date: '',
+  title: '', description: '', proposed_date: '', event_end_date: '',
   time_start: '', time_end: '', venue: '', expected_participants: '',
+  registration_starts: '',
 };
 
 // ─── EventForm defined OUTSIDE the main component to avoid remount on re-render ─────
 function EventForm({ isEdit, form, setForm, editingEvent, formMsg, formErr, submitting, onSubmit, onCancel }) {
   return (
     <div className="space-y-4">
-      <h3 className="text-xl font-bold text-white">
+      <h3 className="text-xl font-bold text-slate-900">
         {isEdit ? 'Edit & Re-submit Event' : 'Submit New Event Proposal'}
       </h3>
 
       {isEdit && editingEvent?.rejection_reason && (
-        <div className="rounded-[1rem] border border-red-400/25 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        <div className="rounded-[1rem] border border-red-400/25 bg-red-500/10 px-4 py-3 text-sm text-red-600">
           <strong>Rejection reason:</strong> {editingEvent.rejection_reason}
         </div>
       )}
 
       <div className="grid gap-3 md:grid-cols-2">
         <div>
-          <label className="mb-1 block text-xs text-white/50">Event Title *</label>
+          <label className="mb-1 block text-xs text-slate-400">Event Title *</label>
           <input
             value={form.title}
             onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
@@ -50,7 +51,7 @@ function EventForm({ isEdit, form, setForm, editingEvent, formMsg, formErr, subm
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-white/50">Venue</label>
+          <label className="mb-1 block text-xs text-slate-400">Venue</label>
           <input
             value={form.venue}
             onChange={e => setForm(f => ({ ...f, venue: e.target.value }))}
@@ -59,7 +60,7 @@ function EventForm({ isEdit, form, setForm, editingEvent, formMsg, formErr, subm
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-white/50">Event Date *</label>
+          <label className="mb-1 block text-xs text-slate-400">Event Start Date *</label>
           <input
             type="date"
             value={form.proposed_date}
@@ -68,7 +69,17 @@ function EventForm({ isEdit, form, setForm, editingEvent, formMsg, formErr, subm
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-white/50">Expected Participants</label>
+          <label className="mb-1 block text-xs text-slate-400">Event End Date *</label>
+          <input
+            type="date"
+            value={form.event_end_date}
+            onChange={e => setForm(f => ({ ...f, event_end_date: e.target.value }))}
+            min={form.proposed_date || undefined}
+            className="campus-input w-full rounded-[1rem] px-4 py-3"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-slate-400">Expected Participants</label>
           <input
             type="number"
             min="0"
@@ -79,7 +90,7 @@ function EventForm({ isEdit, form, setForm, editingEvent, formMsg, formErr, subm
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-white/50">Start Time *</label>
+          <label className="mb-1 block text-xs text-slate-400">Start Time *</label>
           <input
             type="time"
             value={form.time_start}
@@ -88,7 +99,7 @@ function EventForm({ isEdit, form, setForm, editingEvent, formMsg, formErr, subm
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs text-white/50">End Time *</label>
+          <label className="mb-1 block text-xs text-slate-400">End Time *</label>
           <input
             type="time"
             value={form.time_end}
@@ -96,10 +107,20 @@ function EventForm({ isEdit, form, setForm, editingEvent, formMsg, formErr, subm
             className="campus-input w-full rounded-[1rem] px-4 py-3"
           />
         </div>
+        <div className="md:col-span-2">
+          <label className="mb-1 block text-xs text-slate-400">Registration Opens (Date & Time) *</label>
+          <input
+            type="datetime-local"
+            value={form.registration_starts}
+            onChange={e => setForm(f => ({ ...f, registration_starts: e.target.value }))}
+            className="campus-input w-full rounded-[1rem] px-4 py-3"
+          />
+          <p className="mt-1 text-[11px] text-slate-400">Students can register for this event starting from this date & time (after admin approval).</p>
+        </div>
       </div>
 
       <div>
-        <label className="mb-1 block text-xs text-white/50">Description</label>
+        <label className="mb-1 block text-xs text-slate-400">Description</label>
         <textarea
           value={form.description}
           onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
@@ -110,12 +131,12 @@ function EventForm({ isEdit, form, setForm, editingEvent, formMsg, formErr, subm
       </div>
 
       {formMsg && (
-        <div className="rounded-[1rem] border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">
+        <div className="rounded-[1rem] border border-sky-400/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-700">
           {formMsg}
         </div>
       )}
       {formErr && (
-        <div className="rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+        <div className="rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">
           {formErr}
         </div>
       )}
@@ -124,13 +145,13 @@ function EventForm({ isEdit, form, setForm, editingEvent, formMsg, formErr, subm
         <button
           onClick={onSubmit}
           disabled={submitting || !form.title.trim() || !form.proposed_date || !form.time_start || !form.time_end}
-          className="rounded-[1rem] bg-gradient-to-r from-cyan-500 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="rounded-[1rem] bg-gradient-to-r from-sky-500 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {submitting ? 'Submitting…' : isEdit ? 'Re-submit Event' : 'Submit Proposal'}
         </button>
         <button
           onClick={onCancel}
-          className="rounded-[1rem] border border-white/10 bg-white/10 px-6 py-3 text-sm text-white hover:bg-white/15"
+          className="rounded-[1rem] border border-slate-200 bg-slate-100 px-6 py-3 text-sm text-slate-900 hover:bg-slate-200"
         >
           Cancel
         </button>
@@ -150,7 +171,7 @@ export default function ClubPortalPage() {
   const [dashTab, setDashTab] = useState('events'); // 'events' | 'submit' | 'edit'
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingEvent, setEditingEvent] = useState(null);
-  const [expandedEventId, setExpandedEventId] = useState(null);
+  const [registrationModalEvent, setRegistrationModalEvent] = useState(null);
   const [formMsg, setFormMsg] = useState('');
   const [formErr, setFormErr] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -185,6 +206,21 @@ export default function ClubPortalPage() {
     if (club) void loadEvents();
   }, [club, loadEvents]);
 
+  useEffect(() => {
+    if (!registrationModalEvent) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setRegistrationModalEvent(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [registrationModalEvent]);
+
   // ── Form submit ─────────────────────────────────────────────────────────────
   const handleFormSubmit = async () => {
     setFormMsg(''); setFormErr(''); setSubmitting(true);
@@ -198,6 +234,8 @@ export default function ClubPortalPage() {
         body: JSON.stringify({
           ...form,
           expected_participants: Number(form.expected_participants) || 0,
+          registration_starts: form.registration_starts ? new Date(form.registration_starts).toISOString() : null,
+          event_end_date: form.event_end_date || form.proposed_date || null,
         }),
       });
       const data = await res.json();
@@ -232,10 +270,12 @@ export default function ClubPortalPage() {
       title: event.title,
       description: event.description || '',
       proposed_date: event.proposed_date,
+      event_end_date: event.event_end_date || '',
       time_start: event.time_start,
       time_end: event.time_end,
       venue: event.venue || '',
       expected_participants: event.expected_participants || '',
+      registration_starts: event.registration_starts ? new Date(event.registration_starts).toISOString().slice(0, 16) : '',
     });
     setFormMsg(''); setFormErr('');
     setDashTab('edit');
@@ -253,11 +293,19 @@ export default function ClubPortalPage() {
     setDashTab('events');
   };
 
+  const openRegistrationsModal = (event) => {
+    setRegistrationModalEvent(event);
+  };
+
+  const closeRegistrationsModal = () => {
+    setRegistrationModalEvent(null);
+  };
+
   // ── Loading / redirect state ────────────────────────────────────────────────
   if (!sessionChecked) {
     return (
       <div className="campus-shell min-h-screen flex items-center justify-center">
-        <div className="text-white/50 text-sm">Loading club portal…</div>
+        <div className="text-slate-400 text-sm">Loading club portal…</div>
       </div>
     );
   }
@@ -272,12 +320,12 @@ export default function ClubPortalPage() {
         <div className="campus-panel-strong rounded-[2rem] p-8 flex items-center justify-between">
           <div>
             <div className="campus-kicker">Club Portal</div>
-            <h1 className="mt-2 text-3xl font-bold text-white">{club.club_name}</h1>
-            <p className="mt-1 text-sm text-white/55">Manage your event proposals and track their approval status.</p>
+            <h1 className="mt-2 text-3xl font-bold text-slate-900">{club.club_name}</h1>
+            <p className="mt-1 text-sm text-slate-500">Manage your event proposals and track their approval status.</p>
           </div>
           <button
             onClick={handleLogout}
-            className="rounded-full border border-red-300/20 bg-red-500/10 px-5 py-2.5 text-sm font-medium text-red-100 hover:bg-red-500/20"
+            className="rounded-full border border-red-300/20 bg-red-500/10 px-5 py-2.5 text-sm font-medium text-red-600 hover:bg-red-500/20"
           >
             Logout
           </button>
@@ -290,7 +338,7 @@ export default function ClubPortalPage() {
               key={key}
               onClick={() => { setDashTab(key); setFormMsg(''); setFormErr(''); }}
               className={`rounded-[1rem] px-5 py-3 text-sm font-medium transition ${
-                dashTab === key ? 'campus-button text-white' : 'text-white/65 hover:bg-white/5 hover:text-white'
+                dashTab === key ? 'campus-button text-slate-900' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
               {label}
@@ -319,14 +367,14 @@ export default function ClubPortalPage() {
           {/* Events list */}
           {dashTab === 'events' && (
             eventsLoading ? (
-              <div className="text-center text-white/45 py-8">Loading events…</div>
+              <div className="text-center text-slate-400 py-8">Loading events…</div>
             ) : events.length === 0 ? (
-              <div className="text-center text-white/45 py-12">
+              <div className="text-center text-slate-400 py-12">
                 <div className="text-4xl mb-3">📋</div>
                 <p>No events submitted yet.</p>
                 <button
                   onClick={() => setDashTab('submit')}
-                  className="mt-4 rounded-[1rem] bg-gradient-to-r from-cyan-500 to-emerald-400 px-5 py-2.5 text-sm font-semibold text-slate-950"
+                  className="mt-4 rounded-[1rem] bg-gradient-to-r from-sky-500 to-emerald-400 px-5 py-2.5 text-sm font-semibold text-slate-950"
                 >
                   Submit Your First Event
                 </button>
@@ -334,31 +382,31 @@ export default function ClubPortalPage() {
             ) : (
               <div className="space-y-4">
                 {events.map(event => {
-                  const statusColor = STATUS_COLORS[event.status] || 'bg-white/10 text-white/50 border-white/10';
+                  const statusColor = STATUS_COLORS[event.status] || 'bg-slate-100 text-slate-400 border-slate-200';
                   const statusLabel = STATUS_LABELS[event.status] || event.status;
                   const canEdit = ['REJECTED_BY_COORDINATOR', 'REJECTED_BY_ADMIN'].includes(event.status);
                   const canWithdraw = !['APPROVED', 'WITHDRAWN'].includes(event.status);
                   return (
-                    <div key={event.id} className="rounded-[1.2rem] border border-white/10 bg-white/5 p-5">
+                    <div key={event.id} className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-5">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <h3 className="text-lg font-bold text-white">{event.title}</h3>
+                          <h3 className="text-lg font-bold text-slate-900">{event.title}</h3>
                           {event.description && (
-                            <p className="mt-1 text-sm text-white/60 max-w-xl">{event.description}</p>
+                            <p className="mt-1 text-sm text-slate-500 max-w-xl">{event.description}</p>
                           )}
                         </div>
                         <span className={`rounded-full border px-3 py-1 text-xs font-medium ${statusColor}`}>
                           {statusLabel}
                         </span>
                       </div>
-                      <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-white/55">
-                        <div><span className="text-white/40 block">Date</span>{event.proposed_date}</div>
-                        <div><span className="text-white/40 block">Time</span>{event.time_start} – {event.time_end}</div>
-                        <div><span className="text-white/40 block">Venue</span>{event.venue || 'TBD'}</div>
-                        <div><span className="text-white/40 block">Version</span>v{event.version}</div>
+                      <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-slate-500">
+                        <div><span className="text-slate-400 block">Start Date</span>{event.proposed_date}</div>
+                        <div><span className="text-slate-400 block">End Date</span>{event.event_end_date || event.proposed_date}</div>
+                        <div><span className="text-slate-400 block">Time</span>{event.time_start} – {event.time_end}</div>
+                        <div><span className="text-slate-400 block">Venue</span>{event.venue || 'TBD'}</div>
                       </div>
                       {event.rejection_reason && (
-                        <div className="mt-3 rounded-[0.9rem] border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+                        <div className="mt-3 rounded-[0.9rem] border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs text-red-600">
                           ✗ {event.rejection_reason}
                         </div>
                       )}
@@ -367,7 +415,7 @@ export default function ClubPortalPage() {
                           {canEdit && (
                             <button
                               onClick={() => startEdit(event)}
-                              className="rounded-[1rem] bg-gradient-to-r from-cyan-500 to-emerald-400 px-4 py-2 text-xs font-semibold text-slate-950"
+                              className="rounded-[1rem] bg-gradient-to-r from-sky-500 to-emerald-400 px-4 py-2 text-xs font-semibold text-slate-950"
                             >
                               Edit & Re-submit
                             </button>
@@ -375,7 +423,7 @@ export default function ClubPortalPage() {
                           {canWithdraw && (
                             <button
                               onClick={() => void handleWithdraw(event.id)}
-                              className="rounded-[1rem] border border-red-400/25 bg-red-500/10 px-4 py-2 text-xs text-red-200"
+                              className="rounded-[1rem] border border-red-400/25 bg-red-500/10 px-4 py-2 text-xs text-red-600"
                             >
                               Withdraw
                             </button>
@@ -383,34 +431,15 @@ export default function ClubPortalPage() {
                         </div>
                         {event.registrations && event.registrations.length > 0 && (
                           <button
-                            onClick={() => setExpandedEventId(expandedEventId === event.id ? null : event.id)}
-                            className="rounded-[1rem] border border-cyan-400/20 bg-cyan-500/10 px-4 py-2 text-xs font-medium text-cyan-200"
+                            onClick={() => openRegistrationsModal(event)}
+                            className="rounded-[1rem] border border-sky-400/20 bg-sky-500/10 px-4 py-2 text-xs font-medium text-sky-700"
                           >
-                            {expandedEventId === event.id ? 'Hide Registrations' : `View Registrations (${event.registrations.length})`}
+                            {
+                              `View Registrations (${event.registrations.length})`
+                            }
                           </button>
                         )}
                       </div>
-                      {expandedEventId === event.id && event.registrations?.length > 0 && (
-                        <div className="mt-4 rounded-[1rem] bg-black/20 p-4 border border-white/5">
-                          <h4 className="text-sm font-semibold text-white mb-3">Registered Students</h4>
-                          <div className="space-y-2 max-h-60 overflow-y-auto pr-2 campus-scroll">
-                            {event.registrations.map(reg => {
-                              const p = reg.profile || {};
-                              return (
-                                <div key={reg.student_id} className="flex justify-between items-center bg-white/5 rounded-lg p-3 text-xs border border-white/5">
-                                  <div>
-                                    <div className="font-semibold text-white">{p.full_name || p.display_name || 'Student'}</div>
-                                    <div className="text-white/60 mt-0.5">{p.roll_number || 'N/A'} • {p.course || 'N/A'} {p.branch ? `(${p.branch})` : ''}</div>
-                                  </div>
-                                  <div className="text-white/40">
-                                    {new Date(reg.registered_at).toLocaleDateString()}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   );
                 })}
@@ -419,6 +448,67 @@ export default function ClubPortalPage() {
           )}
         </div>
       </div>
+
+      {registrationModalEvent?.registrations?.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm">
+          <div className="absolute inset-0" onClick={closeRegistrationsModal} />
+          <div className="campus-panel-strong relative z-10 w-full max-w-3xl rounded-[1.8rem] p-6 shadow-[0_30px_90px_rgba(7,2,18,0.45)]">
+            <div className="flex flex-col gap-4 border-b border-slate-200 pb-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="campus-kicker">Registrations</div>
+                <h3 className="mt-2 text-2xl font-bold text-slate-900">{registrationModalEvent.title}</h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  {registrationModalEvent.registrations.length} student{registrationModalEvent.registrations.length === 1 ? '' : 's'} registered
+                </p>
+              </div>
+              <button
+                onClick={closeRegistrationsModal}
+                className="rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-900 hover:bg-slate-200"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="campus-scroll mt-5 max-h-[70vh] space-y-3 overflow-y-auto pr-1">
+              {registrationModalEvent.registrations.map((reg, index) => {
+                const profile = reg.profile || {};
+                const studentName = profile.full_name || profile.display_name || 'Student';
+
+                return (
+                  <div key={`${reg.student_id}-${index}`} className="rounded-[1.1rem] border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="text-base font-semibold text-slate-900">{studentName}</div>
+                        <div className="mt-3 grid gap-2 text-sm text-slate-500 sm:grid-cols-2">
+                          <div>
+                            <span className="block text-[11px] uppercase tracking-[0.18em] text-slate-400">Roll Number</span>
+                            <span>{profile.roll_number || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="block text-[11px] uppercase tracking-[0.18em] text-slate-400">Branch</span>
+                            <span>{profile.branch || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="block text-[11px] uppercase tracking-[0.18em] text-slate-400">Course</span>
+                            <span>{profile.course || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="block text-[11px] uppercase tracking-[0.18em] text-slate-400">Registered</span>
+                            <span>{reg.registered_at ? new Date(reg.registered_at).toLocaleDateString() : 'N/A'}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="rounded-full border border-sky-400/20 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-700">
+                        Student #{index + 1}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

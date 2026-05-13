@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/supabase';
+import { sendReminderEmail } from '@/lib/server/reminder-mailer';
 
 // POST /api/events/[id]/register
 export async function POST(request, { params }) {
@@ -11,7 +12,10 @@ export async function POST(request, { params }) {
 
     const { data: event } = await supabase
       .from('events')
-      .select('id, is_published, proposed_date')
+      .select(`
+        id, title, proposed_date, event_end_date, time_start, time_end, venue, is_published,
+        club:clubs!events_club_id_fkey(club_name)
+      `)
       .eq('id', id)
       .maybeSingle();
 
@@ -31,7 +35,38 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ registered: true }, { status: 201 });
+    // Send confirmation email (best-effort, non-blocking)
+    if (user.email) {
+      sendReminderEmail({
+        to: user.email,
+        itemName: event.title,
+        itemType: 'event_registration',
+        date: event.proposed_date,
+        time: event.time_start,
+        offsetHours: null,
+        deliveryReason: 'registered',
+        extra: {
+          venue: event.venue,
+          timeEnd: event.time_end,
+          endDate: event.event_end_date,
+          clubName: event.club?.club_name,
+        },
+      }).catch(() => {});
+    }
+
+    return NextResponse.json({
+      registered: true,
+      event: {
+        id: event.id,
+        title: event.title,
+        proposed_date: event.proposed_date,
+        event_end_date: event.event_end_date,
+        time_start: event.time_start,
+        time_end: event.time_end,
+        venue: event.venue,
+        club_name: event.club?.club_name,
+      },
+    }, { status: 201 });
   } catch (err) {
     console.error('Event registration error:', err);
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Server error' }, { status: 500 });

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { GoogleMap, LoadScript, Marker, Polyline } from '@react-google-maps/api';
 import { useAuth } from './contexts/AuthContext.jsx';
@@ -19,6 +19,7 @@ import { APP_TABS, CAMPUS_CENTER, CAMPUS_LOCATIONS, TAB_LABELS } from '@/lib/sma
 import { buildWeeklyPlannerView, formatPlannerRange, getPlannerValidationError, normalizePlannerEntry } from '@/lib/smart-campus/planner.js';
 import { resolveAccountRole, resolveVerificationStatus } from '@/lib/smart-campus/roles.js';
 import { dedupeReminderByEventName, formatDuration, getAttentionSummary, parseDateTimeLocal, removeRemindersByEventName } from '@/lib/smart-campus/utils';
+import { createSupabaseAuthHeaders } from '@/lib/supabase/auth-fetch.js';
 export default function Home() {
     const { user, loading: authLoading, signOut } = useAuth();
     const [supabase] = useState(() => createClient());
@@ -37,6 +38,7 @@ export default function Home() {
     const [waitingForTime, setWaitingForTime] = useState(null);
     const [learnedInsights, setLearnedInsights] = useState([]);
     const [selectedDestination, setSelectedDestination] = useState(null);
+    const [selectedDestinationKey, setSelectedDestinationKey] = useState(null);
     const [userLocation, setUserLocation] = useState(CAMPUS_CENTER);
     const [currentLocationName, setCurrentLocationName] = useState('Main Gate');
     const [pendingClubJoinId, setPendingClubJoinId] = useState(null);
@@ -50,7 +52,9 @@ export default function Home() {
         userEmail: user?.email || '',
     });
     const joinedClubsCount = clubs.filter((club) => club.joined).length;
-    const attendedEventsCount = events.filter((event) => event.checkedIn).length;
+    const attendedEventsCount = clubEventsData.loaded
+        ? (clubEventsData.enrolled?.length ?? 0)
+        : events.filter((event) => event.checkedIn).length;
     const upcomingRemindersCount = reminders.length;
     const openDeadlinesCount = deadlines.filter((deadline) => !deadline.completed).length;
     const derivedProfile = {
@@ -66,6 +70,7 @@ export default function Home() {
     const profileCourse = userProfile?.course || null;
     const profileBranch = userProfile?.branch || null;
     const profileSemester = userProfile?.semester ?? null;
+    const navigationSelectionKey = `${currentLocationName || 'unknown'}-${selectedDestinationKey || 'none'}`;
     const accountRole = resolveAccountRole(userProfile, user);
     const verificationStatus = resolveVerificationStatus(userProfile, user);
     const teacherRequestStatus = typeof teacherVerificationRequest?.status === 'string' ? teacherVerificationRequest.status : '';
@@ -338,6 +343,15 @@ export default function Home() {
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
+    // Auto-fetch enrolled events on mount so the header badge shows the correct count
+    useEffect(() => {
+        if (!user || !isDataLoaded || clubEventsData.loaded) return;
+        createSupabaseAuthHeaders(supabase)
+            .then(h => fetch('/api/events/published', { headers: h, credentials: 'same-origin' }))
+            .then(r => r.ok ? r.json() : null)
+            .then(d => { if (d) setClubEventsData({ ...d, loaded: true }); })
+            .catch(() => {});
+    }, [user, isDataLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
     const handleSend = async () => {
         if ((!input.trim() && !uploadedImage) || loading || !user)
             return;
@@ -376,9 +390,11 @@ export default function Home() {
                 role: message.role,
                 content: message.content,
             }));
+            const chatAuthHeaders = await createSupabaseAuthHeaders(supabase, { 'Content-Type': 'application/json' });
             const response = await fetch('/api/chat', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: chatAuthHeaders,
+                credentials: 'same-origin',
                 body: JSON.stringify({
                     message: finalMessage,
                     userContext,
@@ -469,7 +485,14 @@ export default function Home() {
         if (action.type === 'navigate') {
             const location = CAMPUS_LOCATIONS[action.destination];
             if (location) {
-                setSelectedDestination(location);
+                if (action.destination === currentLocationName) {
+                    setSelectedDestination(null);
+                    setSelectedDestinationKey(null);
+                }
+                else {
+                    setSelectedDestination(location);
+                    setSelectedDestinationKey(action.destination);
+                }
                 setActiveTab('navigation');
             }
         }
@@ -966,6 +989,40 @@ export default function Home() {
             return dedupeReminderByEventName(prev, nextReminder);
         });
     };
+
+    // Auto-register reminder + notifications when student registers for an event
+    const handleEventRegister = async (event, onSuccess) => {
+        if (event.user_registered) return;
+        if (!userProfile?.roll_number || !userProfile?.course || !userProfile?.branch) {
+            alert('Please complete your profile (roll no, course, branch) in the Profile tab to register for events.');
+            return;
+        }
+        const res = await fetch(`/api/events/${event.id}/register`, { method: 'POST' });
+        if (!res.ok) return;
+        const data = await res.json();
+        // Run parent state update
+        onSuccess();
+        // Auto-add reminder
+        const eventInfo = data.event || event;
+        const reminderId = `event-${eventInfo.id}`;
+        const newReminder = {
+            id: reminderId,
+            eventName: eventInfo.title,
+            date: eventInfo.proposed_date,
+            time: eventInfo.time_start || '09:00',
+            source: 'event_registration',
+            offsets: [24, 2, 0],
+        };
+        upsertReminder(newReminder);
+        void scheduleNotificationForReminder(newReminder);
+        void sendImmediateCreationEmail({
+            itemName: eventInfo.title,
+            itemType: 'reminder',
+            date: eventInfo.proposed_date,
+            time: eventInfo.time_start || '09:00',
+            email: user?.email || '',
+        });
+    };
     const handleRemoveReminder = (reminderId) => {
         cancelScheduledNotification(reminderId);
         setReminders((prev) => prev.filter((r) => r.id !== reminderId));
@@ -1141,7 +1198,7 @@ export default function Home() {
       </div>);
     }
     if (!user) {
-        return (<div className="campus-shell min-h-screen px-4 py-10 sm:px-6 lg:px-8">
+        return (<div className="campus-shell campus-light-mode min-h-screen px-4 py-10 sm:px-6 lg:px-8">
         <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="campus-panel-strong rounded-[2rem] p-8 text-white sm:p-10">
             <div className="campus-kicker">Role-Based Access</div>
@@ -1227,7 +1284,7 @@ export default function Home() {
         }
         return (<TeacherDashboard displayName={displayName} onSignOut={signOut} profile={userProfile} teacherWorkspace={teacherWorkspace} setTeacherWorkspace={setTeacherWorkspace} verificationStatus={effectiveTeacherVerificationStatus}/>);
     }
-    return (<div className="campus-shell min-h-screen pb-10">
+    return (<div className="campus-shell campus-light-mode min-h-screen pb-10">
       <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
         <div className="campus-panel-strong campus-grid overflow-hidden rounded-[2rem] px-6 py-7 sm:px-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -1408,27 +1465,33 @@ export default function Home() {
 
         {activeTab === 'issues' && (<IssueReportingTab reportedIssues={reportedIssues} issueNotificationPreferences={issueNotificationPreferences} issuesLoading={issuesLoading} issueError={issueError} onCreateIssue={createIssueReport} onUpdateIssuePreferences={updateIssuePreferences} onRateIssueSatisfaction={rateIssueSatisfaction} onRefreshIssues={refreshIssueCenter}/>)}
         {activeTab === 'events' && (<div className="space-y-4">
+            {/* Tab bar */}
             <div className="campus-panel rounded-[1.5rem] p-3 flex flex-wrap gap-2 items-center justify-between">
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button onClick={() => setClubEventsTab('open')} className={`rounded-[1rem] px-4 py-2.5 text-sm font-medium transition ${clubEventsTab === 'open' ? 'campus-button text-white' : 'text-white/65 hover:bg-white/5 hover:text-white'}`}>
                   🎟️ Open Registration
                 </button>
-                <button onClick={() => setClubEventsTab('live')} className={`rounded-[1rem] px-4 py-2.5 text-sm font-medium transition ${clubEventsTab === 'live' ? 'campus-button text-white' : 'text-white/65 hover:bg-white/5 hover:text-white'}`}>
-                  🔴 Upcoming &amp; Live
+                <button onClick={() => setClubEventsTab('upcoming')} className={`rounded-[1rem] px-4 py-2.5 text-sm font-medium transition ${clubEventsTab === 'upcoming' ? 'campus-button text-white' : 'text-white/65 hover:bg-white/5 hover:text-white'}`}>
+                  📅 Upcoming
+                </button>
+
+                <button onClick={() => setClubEventsTab('enrolled')} className={`rounded-[1rem] px-4 py-2.5 text-sm font-medium transition ${clubEventsTab === 'enrolled' ? 'campus-button text-white' : 'text-white/65 hover:bg-white/5 hover:text-white'}`}>
+                  ✅ My Enrollments
                 </button>
               </div>
               <button onClick={async () => {
-                const res = await fetch('/api/events/published');
+                const authHdrs = await createSupabaseAuthHeaders(supabase);
+                const res = await fetch('/api/events/published', { headers: authHdrs, credentials: 'same-origin' });
                 if (res.ok) { const d = await res.json(); setClubEventsData({ ...d, loaded: true }); }
               }} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-white">Refresh</button>
             </div>
 
-            {/* Lazy load club events */}
             {!clubEventsData.loaded && activeTab === 'events' && (() => {
-              fetch('/api/events/published').then(r => r.json()).then(d => setClubEventsData({ ...d, loaded: true })).catch(() => {});
+              createSupabaseAuthHeaders(supabase).then(h => fetch('/api/events/published', { headers: h, credentials: 'same-origin' })).then(r => r.json()).then(d => setClubEventsData({ ...d, loaded: true })).catch(() => {});
               return null;
             })()}
 
+            {/* Open Registration */}
             {clubEventsTab === 'open' && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
@@ -1439,7 +1502,7 @@ export default function Home() {
                   <div className="campus-panel rounded-[1.7rem] p-12 text-center text-white/50">
                     <div className="text-5xl mb-3">🎟️</div>
                     <p>No events open for registration right now.</p>
-                    <p className="text-sm mt-2 text-white/35">Check back soon or look at the Upcoming &amp; Live tab.</p>
+                    <p className="text-sm mt-2 text-white/35">Check Upcoming tab for events whose registration hasn&apos;t opened yet.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1451,27 +1514,21 @@ export default function Home() {
                         </div>
                         {event.description && <p className="text-white/60 text-sm mb-3">{event.description}</p>}
                         <div className="space-y-1 text-sm text-white/60 mb-4">
-                          <div>📅 {event.proposed_date} · {event.time_start} – {event.time_end}</div>
+                          <div>📅 {event.proposed_date}{event.event_end_date && event.event_end_date !== event.proposed_date ? ` → ${event.event_end_date}` : ''}</div>
+                          <div>🕐 {event.time_start} – {event.time_end}</div>
                           {event.venue && <div>📍 {event.venue}</div>}
                           <div>🏛️ {event.club?.club_name}</div>
                           <div>👥 {event.registration_count} registered</div>
                         </div>
                         <button
                           disabled={event.user_registered}
-                          onClick={async () => {
-                            if (event.user_registered) return;
-                            if (!userProfile?.roll_number || !userProfile?.course || !userProfile?.branch) {
-                              alert("Please complete your profile (roll no, course, branch) in the Profile tab to register for events.");
-                              return;
-                            }
-                            const res = await fetch(`/api/events/${event.id}/register`, { method: 'POST' });
-                            if (res.ok) {
-                              setClubEventsData(prev => ({
-                                ...prev,
-                                open_registration: prev.open_registration.map(e => e.id === event.id ? { ...e, user_registered: true, registration_count: e.registration_count + 1 } : e),
-                              }));
-                            }
-                          }}
+                          onClick={() => handleEventRegister(event, () => {
+                            setClubEventsData(prev => ({
+                              ...prev,
+                              open_registration: prev.open_registration.map(e => e.id === event.id ? { ...e, user_registered: true, registration_count: e.registration_count + 1 } : e),
+                              enrolled: [...(prev.enrolled || []), { ...event, user_registered: true }],
+                            }));
+                          })}
                           className={`w-full py-2.5 rounded-[1rem] font-medium text-sm transition ${event.user_registered ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 cursor-default' : 'bg-gradient-to-r from-cyan-500 to-purple-500 text-white hover:opacity-90'}`}
                         >
                           {event.user_registered ? '✓ Registered' : 'Register Now'}
@@ -1483,58 +1540,81 @@ export default function Home() {
               </div>
             )}
 
-            {clubEventsTab === 'live' && (
+            {/* Upcoming – reg not yet open */}
+            {clubEventsTab === 'upcoming' && (
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-bold text-white">Upcoming &amp; Live Events</h2>
-                  <div className="text-sm text-white/50">{clubEventsData.upcoming_live?.length || 0} events</div>
+                  <h2 className="text-xl font-bold text-white">Upcoming Events</h2>
+                  <div className="text-sm text-white/50">{clubEventsData.upcoming?.length || 0} events</div>
                 </div>
-                {(clubEventsData.upcoming_live || []).length === 0 ? (
+                {(clubEventsData.upcoming || []).length === 0 ? (
                   <div className="campus-panel rounded-[1.7rem] p-12 text-center text-white/50">
-                    <div className="text-5xl mb-3">🔴</div>
-                    <p>No live or imminent events right now.</p>
+                    <div className="text-5xl mb-3">📅</div>
+                    <p>No upcoming events with future registration windows.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {(clubEventsData.upcoming_live || []).map(event => {
-                      const badge = event.is_today ? { label: 'Today 🔴', color: 'bg-red-500/25 text-red-200 border-red-400/30' }
-                        : event.is_past ? { label: 'Ongoing', color: 'bg-purple-500/25 text-purple-200 border-purple-400/30' }
-                        : { label: 'Coming Soon', color: 'bg-amber-500/20 text-amber-200 border-amber-400/30' };
+                    {(clubEventsData.upcoming || []).map(event => (
+                      <div key={event.id} className="campus-panel rounded-[1.7rem] p-6 transition-all hover:-translate-y-1 hover:border-amber-300/35">
+                        <div className="flex justify-between items-start mb-3">
+                          <h3 className="text-lg font-bold text-white">{event.title}</h3>
+                          <span className="px-2 py-1 bg-amber-500/20 text-amber-200 rounded-full text-xs border border-amber-400/30">Coming Soon</span>
+                        </div>
+                        {event.description && <p className="text-white/60 text-sm mb-3">{event.description}</p>}
+                        <div className="space-y-1 text-sm text-white/60 mb-4">
+                          <div>📅 {event.proposed_date}{event.event_end_date && event.event_end_date !== event.proposed_date ? ` → ${event.event_end_date}` : ''}</div>
+                          <div>🕐 {event.time_start} – {event.time_end}</div>
+                          {event.venue && <div>📍 {event.venue}</div>}
+                          <div>🏛️ {event.club?.club_name}</div>
+                          {event.registration_starts_formatted && <div className="text-amber-300/80">🔓 Registration opens: {event.registration_starts_formatted}</div>}
+                        </div>
+                        <div className="w-full py-2.5 rounded-[1rem] text-center text-sm bg-amber-500/10 text-amber-300 border border-amber-400/20">
+                          Registration not open yet
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+
+            {/* My Enrollments */}
+            {clubEventsTab === 'enrolled' && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-bold text-white">My Enrollments</h2>
+                  <div className="text-sm text-white/50">{clubEventsData.enrolled?.length || 0} events</div>
+                </div>
+                {(clubEventsData.enrolled || []).length === 0 ? (
+                  <div className="campus-panel rounded-[1.7rem] p-12 text-center text-white/50">
+                    <div className="text-5xl mb-3">✅</div>
+                    <p>You haven&apos;t registered for any events yet.</p>
+                    <p className="text-sm mt-2 text-white/35">Browse Open Registration to find events.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {(clubEventsData.enrolled || []).map(event => {
+                      const isCompleted = event.is_past;
+                      const isLive = event.has_started && !event.is_past;
+                      const badge = isCompleted
+                        ? { label: 'Completed ✓', color: 'bg-slate-500/20 text-slate-300 border-slate-400/30' }
+                        : isLive
+                        ? { label: 'Live 🔴', color: 'bg-red-500/25 text-red-200 border-red-400/30' }
+                        : { label: 'Upcoming', color: 'bg-emerald-500/20 text-emerald-200 border-emerald-400/30' };
                       return (
-                        <div key={event.id} className="campus-panel rounded-[1.7rem] p-6 transition-all hover:-translate-y-1">
+                        <div key={event.id} className={`campus-panel rounded-[1.7rem] p-6 transition-all hover:-translate-y-1 ${isCompleted ? 'opacity-70' : ''}`}>
                           <div className="flex justify-between items-start mb-3">
                             <h3 className="text-lg font-bold text-white">{event.title}</h3>
                             <span className={`px-2 py-1 rounded-full text-xs border ${badge.color}`}>{badge.label}</span>
                           </div>
                           {event.description && <p className="text-white/60 text-sm mb-3">{event.description}</p>}
-                          <div className="space-y-1 text-sm text-white/60 mb-4">
-                            <div>📅 {event.proposed_date} · {event.time_start} – {event.time_end}</div>
+                          <div className="space-y-1 text-sm text-white/60">
+                            <div>📅 {event.proposed_date}{event.event_end_date && event.event_end_date !== event.proposed_date ? ` → ${event.event_end_date}` : ''}</div>
+                            <div>🕐 {event.time_start} – {event.time_end}</div>
                             {event.venue && <div>📍 {event.venue}</div>}
                             <div>🏛️ {event.club?.club_name}</div>
-                            <div>👥 {event.registration_count} registered</div>
                           </div>
-                          {event.user_registered ? (
-                            <div className="rounded-[1rem] bg-emerald-500/15 border border-emerald-400/25 px-4 py-2 text-sm text-emerald-300 text-center">✓ You are registered</div>
-                          ) : !event.is_past && (
-                            <button
-                              onClick={async () => {
-                                if (!userProfile?.roll_number || !userProfile?.course || !userProfile?.branch) {
-                                  alert("Please complete your profile (roll no, course, branch) in the Profile tab to register for events.");
-                                  return;
-                                }
-                                const res = await fetch(`/api/events/${event.id}/register`, { method: 'POST' });
-                                if (res.ok) {
-                                  setClubEventsData(prev => ({
-                                    ...prev,
-                                    upcoming_live: prev.upcoming_live.map(e => e.id === event.id ? { ...e, user_registered: true, registration_count: e.registration_count + 1 } : e),
-                                  }));
-                                }
-                              }}
-                              className="w-full py-2.5 rounded-[1rem] font-medium text-sm transition bg-gradient-to-r from-cyan-500 to-purple-500 text-white hover:opacity-90"
-                            >
-                              Register Now
-                            </button>
-                          )}
                         </div>
                       );
                     })}
@@ -1544,7 +1624,7 @@ export default function Home() {
             )}
           </div>)}
 
-        {activeTab === 'clubs' && (<div className="space-y-4">
+                {activeTab === 'clubs' && (<div className="space-y-4">
             <h2 className="text-2xl font-bold text-white mb-6">Student Clubs</h2>
             <div className="grid grid-cols-2 gap-4">
               {clubs.map((club) => (<div key={club.id} className="campus-panel rounded-[1.7rem] p-6 transition-all hover:-translate-y-1 hover:border-cyan-300/35">
@@ -1597,6 +1677,10 @@ export default function Home() {
                 {Object.entries(CAMPUS_LOCATIONS).map(([key, loc]) => (<button key={`current-${key}`} onClick={() => {
                     setUserLocation(loc);
                     setCurrentLocationName(key);
+                    if (selectedDestinationKey === key) {
+                        setSelectedDestination(null);
+                        setSelectedDestinationKey(null);
+                    }
                 }} className={`py-3 rounded-lg font-medium transition-all text-sm ${currentLocationName === key
                     ? 'bg-blue-500 text-white shadow-lg'
                     : 'bg-white/10 text-white hover:bg-white/20'}`}>
@@ -1608,10 +1692,13 @@ export default function Home() {
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-white mb-3">🎯 Where do you want to go?</h3>
               <div className="grid grid-cols-4 gap-3">
-                {Object.entries(CAMPUS_LOCATIONS).map(([key, loc]) => (<button key={`dest-${key}`} onClick={() => setSelectedDestination(loc)} className={`py-3 rounded-lg font-medium transition-all text-sm ${selectedDestination?.name === loc.name
+                {Object.entries(CAMPUS_LOCATIONS).map(([key, loc]) => (<button key={`dest-${key}`} onClick={() => {
+                    setSelectedDestination(loc);
+                    setSelectedDestinationKey(key);
+                }} className={`py-3 rounded-lg font-medium transition-all text-sm ${selectedDestinationKey === key
                     ? 'bg-gradient-to-r from-cyan-500 to-purple-500 text-white shadow-lg'
                     : 'bg-white/10 text-white hover:bg-white/20'} ${currentLocationName === key ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={currentLocationName === key}>
-                    {selectedDestination?.name === loc.name && '🎯 '}{key}
+                    {selectedDestinationKey === key && '🎯 '}{key}
                   </button>))}
               </div>
               {currentLocationName && (<p className="text-sm text-white/50 mt-2">
@@ -1622,17 +1709,17 @@ export default function Home() {
             {selectedDestination ? (<div className="space-y-4">
                 <div className="bg-white/5 rounded-xl overflow-hidden" style={{ height: '500px' }}>
                   <LoadScript googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}>
-                    <GoogleMap mapContainerStyle={{ width: '100%', height: '100%' }} center={{
+                    <GoogleMap key={navigationSelectionKey} mapContainerStyle={{ width: '100%', height: '100%' }} center={{
                     lat: (userLocation.lat + selectedDestination.lat) / 2,
                     lng: (userLocation.lng + selectedDestination.lng) / 2
                 }} zoom={16}>
-                      <Marker position={userLocation} label="📍" icon={{
+                      <Marker key={`start-${navigationSelectionKey}`} position={userLocation} label="📍" icon={{
                     url: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
                 }} title={`You are here: ${currentLocationName}`}/>
-                      <Marker position={selectedDestination} label="🎯" icon={{
+                      <Marker key={`end-${navigationSelectionKey}`} position={selectedDestination} label="🎯" icon={{
                     url: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png'
                 }} title={`Destination: ${selectedDestination.name}`}/>
-                      <Polyline path={[
+                      <Polyline key={`line-${navigationSelectionKey}`} path={[
                     { lat: userLocation.lat, lng: userLocation.lng },
                     { lat: selectedDestination.lat, lng: selectedDestination.lng }
                 ]} options={{

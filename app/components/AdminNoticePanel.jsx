@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useState } from 'react';
 
 const ROLE_OPTIONS = [
-    { value: 'student', label: 'Students only', color: 'text-cyan-300', bg: 'bg-cyan-500/10 border-cyan-400/20' },
-    { value: 'teacher', label: 'Teachers only', color: 'text-violet-300', bg: 'bg-violet-500/10 border-violet-400/20' },
-    { value: 'all', label: 'Everyone', color: 'text-emerald-300', bg: 'bg-emerald-500/10 border-emerald-400/20' },
+    { value: 'student', label: 'Students only', color: 'text-sky-600', bg: 'bg-sky-500/10 border-sky-400/20' },
+    { value: 'teacher', label: 'Teachers only', color: 'text-violet-700', bg: 'bg-violet-500/10 border-violet-400/20' },
+    { value: 'all', label: 'Everyone', color: 'text-emerald-700', bg: 'bg-emerald-500/10 border-emerald-400/20' },
 ];
 
 function RoleBadge({ role }) {
@@ -28,22 +28,22 @@ function NoticeCard({ notice, onDelete }) {
     };
 
     return (
-        <div className="rounded-[1.2rem] border border-white/10 bg-white/5 p-5 transition hover:bg-white/[0.07]">
+        <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-5 transition hover:bg-white/[0.07]">
             <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-3 mb-2">
                         <RoleBadge role={notice.target_role} />
-                        <span className="text-xs text-white/40">
+                        <span className="text-xs text-slate-400">
                             {new Date(notice.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
                         </span>
                     </div>
-                    <div className="font-semibold text-white text-base">{notice.title}</div>
-                    <div className="mt-2 text-sm leading-6 text-white/65 whitespace-pre-wrap">{notice.message}</div>
+                    <div className="font-semibold text-slate-900 text-base">{notice.title}</div>
+                    <div className="mt-2 text-sm leading-6 text-slate-500 whitespace-pre-wrap">{notice.message}</div>
                 </div>
                 <button
                     onClick={handleDelete}
                     disabled={deleting}
-                    className="shrink-0 rounded-full border border-red-400/20 bg-red-500/10 px-3 py-1.5 text-xs text-red-300 hover:bg-red-500/20 disabled:opacity-50 transition"
+                    className="shrink-0 rounded-full border border-red-400/20 bg-red-500/10 px-3 py-1.5 text-xs text-red-600 hover:bg-red-500/20 disabled:opacity-50 transition"
                 >
                     {deleting ? 'Deleting…' : 'Delete'}
                 </button>
@@ -137,8 +137,8 @@ export default function AdminNoticePanel() {
             {/* Compose */}
             <div className="campus-panel-strong rounded-[2rem] p-6">
                 <div className="mb-5">
-                    <h3 className="text-2xl font-bold text-white">📢 Post a Notice</h3>
-                    <p className="mt-1 text-sm text-white/55">
+                    <h3 className="text-2xl font-bold text-slate-900">📢 Post a Notice</h3>
+                    <p className="mt-1 text-sm text-slate-500">
                         Select an audience, write your notice, and hit Publish — emails are sent automatically to all registered users in that group.
                     </p>
                 </div>
@@ -152,7 +152,7 @@ export default function AdminNoticePanel() {
                             className={`rounded-full border px-5 py-2.5 text-sm font-medium transition ${
                                 form.targetRole === opt.value
                                     ? `${opt.bg} ${opt.color} scale-[1.03] shadow-lg`
-                                    : 'border-white/10 bg-white/5 text-white/55 hover:bg-white/10 hover:text-white'
+                                    : 'border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900'
                             }`}
                         >
                             {opt.value === 'student' ? '🎓 ' : opt.value === 'teacher' ? '👩‍🏫 ' : '🌐 '}{opt.label}
@@ -178,27 +178,27 @@ export default function AdminNoticePanel() {
                 </div>
 
                 {error && (
-                    <div className="mt-3 rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                    <div className="mt-3 rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">
                         {error}
                     </div>
                 )}
 
                 {result && (
-                    <div className="mt-3 rounded-[1rem] border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+                    <div className="mt-3 rounded-[1rem] border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700">
                         ✅ Notice posted successfully.
                         {' '}{result.emailsSent > 0
                             ? `Emails sent to ${result.emailsSent} ${result.targetRole === 'all' ? 'user(s)' : `${result.targetRole}(s)`}.`
                             : result.recipientCount === 0
                                 ? 'No registered users found in this group yet — check that users have signed up with the correct role.'
                                 : `Found ${result.recipientCount} user(s) but emails could not be sent — check GMAIL credentials.`}
-                        {result.emailError && <span className="block mt-1 text-amber-300">Email warning: {result.emailError}</span>}
+                        {result.emailError && <span className="block mt-1 text-amber-700">Email warning: {result.emailError}</span>}
                     </div>
                 )}
 
                 <button
                     onClick={() => void handlePost()}
                     disabled={posting || !form.title.trim() || !form.message.trim()}
-                    className="mt-4 rounded-[1rem] bg-gradient-to-r from-cyan-500 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 disabled:opacity-50 transition hover:scale-[1.02] active:scale-100"
+                    className="mt-4 rounded-[1rem] bg-gradient-to-r from-sky-500 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 disabled:opacity-50 transition hover:scale-[1.02] active:scale-100"
                 >
                     {posting ? 'Publishing…' : '📨 Publish Notice'}
                 </button>
@@ -208,26 +208,26 @@ export default function AdminNoticePanel() {
             <div className="campus-panel rounded-[1.8rem] p-6">
                 <div className="flex items-center justify-between mb-5">
                     <div>
-                        <h4 className="text-xl font-bold text-white">Notice History</h4>
-                        <p className="mt-1 text-sm text-white/55">{notices.length} notice{notices.length === 1 ? '' : 's'} posted</p>
+                        <h4 className="text-xl font-bold text-slate-900">Notice History</h4>
+                        <p className="mt-1 text-sm text-slate-500">{notices.length} notice{notices.length === 1 ? '' : 's'} posted</p>
                     </div>
                     <button
                         onClick={() => void loadNotices()}
-                        className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/15 transition"
+                        className="rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-900 hover:bg-slate-150 transition"
                     >
                         Refresh
                     </button>
                 </div>
                 {loading ? (
-                    <div className="rounded-[1.2rem] border border-dashed border-white/10 px-4 py-8 text-center text-sm text-white/45">
+                    <div className="rounded-[1.2rem] border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-400">
                         Loading notices…
                     </div>
                 ) : notices.length === 0 ? (
-                    <div className="rounded-[1.2rem] border border-dashed border-white/10 px-4 py-8 text-center text-sm text-white/45">
+                    <div className="rounded-[1.2rem] border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-400">
                         No notices posted yet. Use the form above to publish your first notice.
                     </div>
                 ) : (
-                    <div className="space-y-3">
+                    <div className="campus-scroll max-h-[24rem] space-y-3 overflow-y-auto pr-1">
                         {notices.map(notice => (
                             <NoticeCard key={notice.id} notice={notice} onDelete={handleDelete} />
                         ))}

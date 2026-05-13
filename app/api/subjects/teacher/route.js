@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getTeacherAssignedSubjects, getUserRoleProfile, listSubjectsForClass, listTeacherCreatedSubjects } from '@/lib/server/attendance.js';
+import { getUserRoleProfile, listSubjectsForClass, listTeacherCreatedSubjects } from '@/lib/server/attendance.js';
 import { getAuthenticatedUser } from '@/lib/server/supabase';
 
 export async function GET(request) {
@@ -23,18 +23,15 @@ export async function GET(request) {
             semester: `${params.get('semester') || ''}`.trim(),
         };
 
-        // Load both in parallel:
-        // - allSubjects: every subject in the DB (populates course/branch/semester dropdowns)
-        // - assignedSubjects: only the subjects this teacher is allowed to mark attendance for
-        const [allSubjects, assignedSubjects, createdSubjects] = await Promise.all([
-            listSubjectsForClass(supabase, {}),
-            role === 'admin'
-                ? listSubjectsForClass(supabase, filters)
-                : getTeacherAssignedSubjects(supabase, user.id, filters),
-            role === 'admin'
-                ? listSubjectsForClass(supabase, filters)
-                : listTeacherCreatedSubjects(supabase, user.id, filters),
-        ]);
+        const createdSubjects = role === 'admin'
+            ? await listSubjectsForClass(supabase, filters)
+            : await listTeacherCreatedSubjects(supabase, user.id, filters);
+
+        const assignedSubjects = createdSubjects;
+
+        const allSubjects = role === 'admin'
+            ? await listSubjectsForClass(supabase, {})
+            : await listTeacherCreatedSubjects(supabase, user.id, {});
 
         // Legacy `subjects` key keeps backwards-compat with any older callers.
         return NextResponse.json({ subjects: assignedSubjects, assignedSubjects, createdSubjects, allSubjects });

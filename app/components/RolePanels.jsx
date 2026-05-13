@@ -20,8 +20,8 @@ function PanelCard({ title, description, children, action }) {
         <div className="campus-panel rounded-[1.7rem] p-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                    <h3 className="text-xl font-bold text-white">{title}</h3>
-                    <p className="mt-1 text-sm text-white/60">{description}</p>
+                    <h3 className="text-xl font-bold text-slate-900">{title}</h3>
+                    <p className="mt-1 text-sm text-slate-500">{description}</p>
                 </div>
                 {action}
             </div>
@@ -32,9 +32,38 @@ function PanelCard({ title, description, children, action }) {
 
 function EmptyState({ title }) {
     return (
-        <div className="rounded-[1.2rem] border border-dashed border-white/10 px-4 py-8 text-center text-sm text-white/45">
+        <div className="rounded-[1.2rem] border border-dashed border-slate-200 px-4 py-8 text-center text-sm text-slate-400">
             {title}
         </div>
+    );
+}
+
+function DashboardSidebar({ title, description, items, activeItem, onSelect }) {
+    return (
+        <aside className="campus-panel rounded-[1.7rem] p-4 lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)]">
+            <div className="border-b border-slate-200/80 px-3 pb-4">
+                <div className="text-xs uppercase tracking-[0.2em] text-slate-400">{title}</div>
+                <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
+            </div>
+            <div className="mt-4 flex gap-3 overflow-x-auto pb-2 lg:block lg:max-h-[calc(100vh-10rem)] lg:space-y-2 lg:overflow-y-auto lg:overflow-x-hidden lg:pb-0">
+                {items.map((item) => (
+                    <button
+                        key={item.id}
+                        onClick={() => onSelect(item.id)}
+                        className={`min-w-[14rem] rounded-[1.2rem] border px-4 py-4 text-left transition lg:block lg:w-full lg:min-w-0 ${
+                            activeItem === item.id
+                                ? 'border-transparent bg-gradient-to-r from-sky-500 to-emerald-400 text-slate-950 shadow-lg shadow-sky-500/20'
+                                : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-white'
+                        }`}
+                    >
+                        <div className="text-sm font-semibold">{item.label}</div>
+                        <div className={`mt-1 text-xs leading-5 ${activeItem === item.id ? 'text-slate-800/80' : 'text-slate-500'}`}>
+                            {item.description}
+                        </div>
+                    </button>
+                ))}
+            </div>
+        </aside>
     );
 }
 
@@ -58,14 +87,14 @@ export function TeacherPendingPanel({ profile, request, authUser, onSignOut, req
                     <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
                         <div>
                             <div className="campus-kicker">Teacher Access Review</div>
-                            <h1 className="mt-3 text-3xl font-bold text-white">
+                            <h1 className="mt-3 text-3xl font-bold text-slate-900">
                                 {isApproved
                                     ? 'Your teacher access has already been approved'
                                     : isRejected
                                         ? 'Your teacher access request is still locked'
                                         : 'Your teacher panel is waiting for admin verification'}
                             </h1>
-                            <p className="mt-3 max-w-2xl text-sm leading-7 text-white/65">
+                            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-500">
                                 {isApproved
                                     ? 'Admin approval is already recorded for this account. If this screen still appears, refresh the portal and your teacher dashboard should open without another submission.'
                                     : isRejected
@@ -73,7 +102,7 @@ export function TeacherPendingPanel({ profile, request, authUser, onSignOut, req
                                     : 'Your email is verified. Until the admin approves this teacher account, only your account details and request status are visible.'}
                             </p>
                         </div>
-                        <button onClick={onSignOut} className="rounded-full border border-red-300/20 bg-red-500/10 px-5 py-2.5 text-sm font-medium text-red-100 transition hover:bg-red-500/20">
+                        <button onClick={onSignOut} className="rounded-full border border-red-300/20 bg-red-500/10 px-5 py-2.5 text-sm font-medium text-red-600 transition hover:bg-red-500/20">
                             Logout
                         </button>
                     </div>
@@ -81,16 +110,16 @@ export function TeacherPendingPanel({ profile, request, authUser, onSignOut, req
 
                 <div className="grid gap-6 md:grid-cols-3">
                     <div className="campus-panel rounded-[1.7rem] p-6">
-                        <div className="text-xs uppercase tracking-[0.2em] text-white/45">Status</div>
-                        <div className="mt-3 text-2xl font-bold capitalize text-white">{requestStatus}</div>
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Status</div>
+                        <div className="mt-3 text-2xl font-bold capitalize text-slate-900">{requestStatus}</div>
                     </div>
                     <div className="campus-panel rounded-[1.7rem] p-6">
-                        <div className="text-xs uppercase tracking-[0.2em] text-white/45">Email Verification</div>
-                        <div className="mt-3 text-2xl font-bold text-white">{authUser?.email_confirmed_at ? 'Verified' : 'Pending'}</div>
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Email Verification</div>
+                        <div className="mt-3 text-2xl font-bold text-slate-900">{authUser?.email_confirmed_at ? 'Verified' : 'Pending'}</div>
                     </div>
                     <div className="campus-panel rounded-[1.7rem] p-6">
-                        <div className="text-xs uppercase tracking-[0.2em] text-white/45">Phone Verification</div>
-                        <div className="mt-3 text-2xl font-bold text-white">{phoneVerified ? 'Verified' : 'Pending'}</div>
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Phone Verification</div>
+                        <div className="mt-3 text-2xl font-bold text-slate-900">{phoneVerified ? 'Verified' : 'Pending'}</div>
                     </div>
                 </div>
 
@@ -98,21 +127,21 @@ export function TeacherPendingPanel({ profile, request, authUser, onSignOut, req
                     title="Teacher Account Details"
                     description="These are the only details visible until admin approval unlocks the teacher dashboard."
                 >
-                    <div className="grid gap-3 md:grid-cols-2 text-sm text-white/75">
-                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Name: {displayName}</div>
-                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Email: {email}</div>
-                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Phone: {phoneNumber}</div>
-                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Employee ID: {employeeId}</div>
-                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Submitted: {submittedAt || 'Waiting for profile sync after first verified login'}</div>
-                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Reviewed: {reviewedAt || 'Not reviewed yet'}</div>
+                    <div className="grid gap-3 md:grid-cols-2 text-sm text-slate-600">
+                        <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">Name: {displayName}</div>
+                        <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">Email: {email}</div>
+                        <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">Phone: {phoneNumber}</div>
+                        <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">Employee ID: {employeeId}</div>
+                        <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">Submitted: {submittedAt || 'Waiting for profile sync after first verified login'}</div>
+                        <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">Reviewed: {reviewedAt || 'Not reviewed yet'}</div>
                     </div>
                     {requestError ? (
-                        <div className="mt-4 rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                        <div className="mt-4 rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">
                             {requestError}
                         </div>
                     ) : null}
                     {requestLoading ? (
-                        <div className="mt-4 rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70">
+                        <div className="mt-4 rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                             Syncing your teacher request...
                         </div>
                     ) : null}
@@ -122,12 +151,12 @@ export function TeacherPendingPanel({ profile, request, authUser, onSignOut, req
                     title="What Happens Next"
                     description="The account stays locked to this screen until the admin approves the teacher request."
                 >
-                    <div className="space-y-3 text-sm text-white/75">
-                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">1. Your verified teacher account remains in the admin review queue.</div>
-                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">2. No teacher tools, subjects, announcements, or dashboards are shown before approval.</div>
-                        <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">3. After approval, sign in again and the full teacher panel will open automatically.</div>
+                    <div className="space-y-3 text-sm text-slate-600">
+                        <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">1. Your verified teacher account remains in the admin review queue.</div>
+                        <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">2. No teacher tools, subjects, announcements, or dashboards are shown before approval.</div>
+                        <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">3. After approval, sign in again and the full teacher panel will open automatically.</div>
                         {request?.review_notes ? (
-                            <div className="rounded-[1rem] border border-amber-400/25 bg-amber-500/10 px-4 py-3 text-amber-100">
+                            <div className="rounded-[1rem] border border-amber-400/25 bg-amber-500/10 px-4 py-3 text-amber-700">
                                 Latest review note: {request.review_notes}
                             </div>
                         ) : null}
@@ -173,7 +202,8 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
         setLoadingDbSubjects(true);
         const res = await fetch(`/api/subjects/teacher?course=${encodeURIComponent(course)}&branch=${encodeURIComponent(branch)}&semester=${semester}`, { credentials: 'same-origin' });
         const payload = await res.json().catch(() => ({}));
-        setDbSubjects(Array.isArray(payload.allSubjects) ? payload.allSubjects.filter(s => s.course === course && s.branch === branch && String(s.semester) === String(semester)) : []);
+        const createdSubjects = Array.isArray(payload.createdSubjects) ? payload.createdSubjects : [];
+        setDbSubjects(createdSubjects.filter(s => s.course === course && s.branch === branch && String(s.semester) === String(semester)));
         setLoadingDbSubjects(false);
     };
 
@@ -298,12 +328,13 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
         }
     };
 
-    const [assignmentForm, setAssignmentForm] = useState({ courseId: '', title: '', dueDate: '', gradeWeight: '' });
+    const [assignmentForm, setAssignmentForm] = useState({ subjectId: '', title: '', dueDate: '', gradeWeight: '' });
     const [studentForm, setStudentForm] = useState({ course: '', branch: '', semester: '', subjectId: '', rollNumber: '' });
     const [classStudents, setClassStudents] = useState([]);
     const [loadingClassStudents, setLoadingClassStudents] = useState(false);
-    const [lessonForm, setLessonForm] = useState({ date: '', topic: '', courseId: '' });
+    const [lessonForm, setLessonForm] = useState({ date: '', topic: '', subjectId: '' });
     const [messageForm, setMessageForm] = useState({ recipient: '', subject: '', message: '' });
+    const [activeTeacherSection, setActiveTeacherSection] = useState('course-management');
 
     const courses = teacherWorkspace?.courses || [];
     const announcements = teacherWorkspace?.announcements || [];
@@ -311,10 +342,21 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
     const students = teacherWorkspace?.students || [];
     const lessonPlans = teacherWorkspace?.lessonPlans || [];
     const communications = teacherWorkspace?.communications || [];
+    const teacherSections = [
+        { id: 'course-management', label: 'Course Management', description: 'Subjects, announcements, assignments, and student records.' },
+        { id: 'attendance', label: 'Attendance', description: 'Mark attendance and monitor class participation.' },
+        { id: 'planning', label: 'Lesson Planning', description: 'Weekly plans and communication tracking.' },
+        { id: 'notices', label: 'Teacher Notices', description: 'Teacher-facing notice board updates.' },
+        { id: 'jcufa', label: 'JCUFA Portal', description: 'Faculty association discussions and acknowledgements.' },
+        { id: 'club-approvals', label: 'Club Event Approval', description: 'Coordinator-level event approval queue.' },
+    ];
 
-    const totalPendingGrades = assignments.filter((assignment) => assignment.status !== 'graded').length;
-    const averageProgress = students.length > 0
-        ? Math.round(students.reduce((sum, student) => sum + Number(student.progress || 0), 0) / students.length)
+    const teacherSubjectIds = useMemo(() => new Set(teacherSubjects.map((subject) => subject.id)), [teacherSubjects]);
+    const visibleAssignments = assignments.filter((assignment) => assignment.subjectId && teacherSubjectIds.has(assignment.subjectId));
+    const visibleStudents = students.filter((student) => student.subjectId && teacherSubjectIds.has(student.subjectId));
+    const totalPendingGrades = visibleAssignments.filter((assignment) => assignment.status !== 'graded').length;
+    const averageProgress = visibleStudents.length > 0
+        ? Math.round(visibleStudents.reduce((sum, student) => sum + Number(student.progress || 0), 0) / visibleStudents.length)
         : 0;
 
     const selectedCourseName = (courseId) => {
@@ -323,6 +365,14 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
             return 'General';
         }
         return `${course.title} | ${course.course} | ${course.branch} | Sem ${course.semester}`;
+    };
+
+    const selectedSubjectLabel = (subjectId) => {
+        const subject = teacherSubjects.find((entry) => entry.id === subjectId);
+        if (!subject) {
+            return 'Subject unavailable';
+        }
+        return `${subject.name}${subject.code ? ` (${subject.code})` : ''} | ${subject.course} | ${subject.branch} | Sem ${subject.semester}`;
     };
 
     const announcementCourseOptions = Array.from(new Set(
@@ -356,18 +406,7 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
         && subject.branch === announcementSelectedBranch
         && String(subject.semester) === String(announcementSelectedSemester)
     );
-    const legacyClassSubjectOptions = dbSubjects.filter((subject) =>
-        subject.course === announcementSelectedCourse
-        && subject.branch === announcementSelectedBranch
-        && String(subject.semester) === String(announcementSelectedSemester)
-    );
     const mergedAnnouncementSubjectOptions = [...announcementSubjectOptions];
-
-    for (const subject of legacyClassSubjectOptions) {
-        if (!mergedAnnouncementSubjectOptions.some((entry) => entry.id === subject.id)) {
-            mergedAnnouncementSubjectOptions.push(subject);
-        }
-    }
 
     const announcementSelectedSubjectId = mergedAnnouncementSubjectOptions.some((subject) => subject.id === announcementForm.subjectId)
         ? announcementForm.subjectId
@@ -375,11 +414,6 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
 
     const selectedSubjectDetails = (subjectId) => teacherSubjects.find((subject) => subject.id === subjectId) || null;
     const allTeacherPanelSubjects = [...teacherSubjects];
-    for (const subject of dbSubjects) {
-        if (!allTeacherPanelSubjects.some((entry) => entry.id === subject.id)) {
-            allTeacherPanelSubjects.push(subject);
-        }
-    }
 
     const selectedSubjectName = (announcement) => {
         if (announcement?.subjectName) {
@@ -558,18 +592,18 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
                     <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
                         <div>
                             <div className="campus-kicker">Teacher Panel</div>
-                            <h1 className="mt-3 text-3xl font-bold text-white">Manage courses, teaching flow, and student momentum from one place</h1>
-                            <p className="mt-3 max-w-3xl text-sm leading-7 text-white/65">
+                            <h1 className="mt-3 text-3xl font-bold text-slate-900">Manage courses, teaching flow, and student momentum from one place</h1>
+                            <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-500">
                                 Welcome back, {displayName}. Your teacher account is approved, so course management, announcements, grading, lesson planning, and communication tools are all live.
                             </p>
                         </div>
                         <div className="flex flex-col gap-3 sm:flex-row">
-                            <div className="campus-panel rounded-[1.3rem] px-4 py-3 text-sm text-white/80">
-                                <div className="text-[11px] uppercase tracking-[0.2em] text-white/45">Role</div>
-                                <div className="mt-1 text-white">{profile?.role || 'teacher'}</div>
-                                <div className="capitalize text-white/60">{verificationStatus}</div>
+                            <div className="campus-panel rounded-[1.3rem] px-4 py-3 text-sm text-slate-700">
+                                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Role</div>
+                                <div className="mt-1 text-slate-900">{profile?.role || 'teacher'}</div>
+                                <div className="capitalize text-slate-500">{verificationStatus}</div>
                             </div>
-                            <button onClick={onSignOut} className="rounded-full border border-red-300/20 bg-red-500/10 px-5 py-2.5 text-sm font-medium text-red-100 transition hover:bg-red-500/20">
+                            <button onClick={onSignOut} className="rounded-full border border-red-300/20 bg-red-500/10 px-5 py-2.5 text-sm font-medium text-red-600 transition hover:bg-red-500/20">
                                 Logout
                             </button>
                         </div>
@@ -578,45 +612,57 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
 
                 <div className="grid gap-4 md:grid-cols-4">
                     <div className="campus-panel rounded-[1.5rem] p-5">
-                        <div className="text-xs uppercase tracking-[0.18em] text-white/45">Courses</div>
-                        <div className="mt-3 text-3xl font-bold text-white">{courses.length}</div>
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Subjects</div>
+                        <div className="mt-3 text-3xl font-bold text-slate-900">{teacherSubjects.length}</div>
                     </div>
                     <div className="campus-panel rounded-[1.5rem] p-5">
-                        <div className="text-xs uppercase tracking-[0.18em] text-white/45">Announcements</div>
-                        <div className="mt-3 text-3xl font-bold text-white">{announcements.length}</div>
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Announcements</div>
+                        <div className="mt-3 text-3xl font-bold text-slate-900">{announcements.length}</div>
                     </div>
                     <div className="campus-panel rounded-[1.5rem] p-5">
-                        <div className="text-xs uppercase tracking-[0.18em] text-white/45">Pending Grades</div>
-                        <div className="mt-3 text-3xl font-bold text-white">{totalPendingGrades}</div>
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Pending Grades</div>
+                        <div className="mt-3 text-3xl font-bold text-slate-900">{totalPendingGrades}</div>
                     </div>
                     <div className="campus-panel rounded-[1.5rem] p-5">
-                        <div className="text-xs uppercase tracking-[0.18em] text-white/45">Student Progress</div>
-                        <div className="mt-3 text-3xl font-bold text-white">{averageProgress}%</div>
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Student Progress</div>
+                        <div className="mt-3 text-3xl font-bold text-slate-900">{averageProgress}%</div>
                     </div>
                 </div>
 
-                <div className="grid gap-6 xl:grid-cols-2">
+                <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+                    <DashboardSidebar
+                        title="Teacher Functions"
+                        description="Open each teaching workflow from a dedicated sidebar with enough room for a longer tools stack."
+                        items={teacherSections}
+                        activeItem={activeTeacherSection}
+                        onSelect={setActiveTeacherSection}
+                    />
+
+                    <div className="min-w-0 space-y-6">
+                        {activeTeacherSection === 'course-management' ? (
+                            <>
+                                <div className="grid gap-6 xl:grid-cols-2">
                     <PanelCard
                         title="Course Management"
                         description="Add subjects for a specific course, branch, and semester. They appear immediately in the teacher attendance panel and student attendance tab."
-                        action={<button onClick={() => void loadDbSubjects()} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-white">Refresh</button>}
+                        action={<button onClick={() => void loadDbSubjects()} className="rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-900">Refresh</button>}
                     >
                         {/* Cascading filters */}
                         <div className="grid gap-3 md:grid-cols-3">
                             <div>
-                                <div className="mb-1 text-xs uppercase tracking-[0.16em] text-white/45">Course</div>
+                                <div className="mb-1 text-xs uppercase tracking-[0.16em] text-slate-400">Course</div>
                                 <select value={courseForm.course} onChange={e => setCourseForm(f => ({ ...f, course: e.target.value, branch: '', semester: '' }))} className="campus-input w-full rounded-[1rem] px-4 py-3">
                                     {COURSE_LIST.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <div className="mb-1 text-xs uppercase tracking-[0.16em] text-white/45">Branch</div>
+                                <div className="mb-1 text-xs uppercase tracking-[0.16em] text-slate-400">Branch</div>
                                 <select value={cfBranch} onChange={e => setCourseForm(f => ({ ...f, branch: e.target.value }))} className="campus-input w-full rounded-[1rem] px-4 py-3">
                                     {cfBranchOptions.map(b => <option key={b} value={b}>{b}</option>)}
                                 </select>
                             </div>
                             <div>
-                                <div className="mb-1 text-xs uppercase tracking-[0.16em] text-white/45">Semester</div>
+                                <div className="mb-1 text-xs uppercase tracking-[0.16em] text-slate-400">Semester</div>
                                 <select value={cfSemester} onChange={e => setCourseForm(f => ({ ...f, semester: e.target.value }))} className="campus-input w-full rounded-[1rem] px-4 py-3">
                                     {cfSemesterOptions.map(s => <option key={s} value={s}>Semester {s}</option>)}
                                 </select>
@@ -628,24 +674,24 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
                             <input value={courseForm.title} onChange={e => setCourseForm(f => ({ ...f, title: e.target.value }))} placeholder="Subject name (e.g. Data Structures)" className="campus-input rounded-[1rem] px-4 py-3" />
                             <input value={courseForm.code} onChange={e => setCourseForm(f => ({ ...f, code: e.target.value }))} placeholder="Subject code (e.g. CS201)" className="campus-input rounded-[1rem] px-4 py-3" />
                         </div>
-                        <button onClick={() => void handleAddSubject()} disabled={!courseForm.title.trim() || !courseForm.code.trim()} className="mt-3 rounded-[1rem] bg-gradient-to-r from-cyan-500 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950 disabled:opacity-50">
+                        <button onClick={() => void handleAddSubject()} disabled={!courseForm.title.trim() || !courseForm.code.trim()} className="mt-3 rounded-[1rem] bg-gradient-to-r from-sky-500 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950 disabled:opacity-50">
                             Add subject to {courseForm.course} {cfBranch} Sem {cfSemester}
                         </button>
-                        {subjectSaveMsg && <div className="mt-2 rounded-[1rem] border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">{subjectSaveMsg}</div>}
-                        {subjectSaveError && <div className="mt-2 rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{subjectSaveError}</div>}
+                        {subjectSaveMsg && <div className="mt-2 rounded-[1rem] border border-sky-400/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-700">{subjectSaveMsg}</div>}
+                        {subjectSaveError && <div className="mt-2 rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">{subjectSaveError}</div>}
 
                         {/* Existing subjects for selected class */}
                         <div className="mt-5">
-                            <div className="mb-2 text-xs uppercase tracking-[0.16em] text-white/45">{courseForm.course} · {cfBranch} · Semester {cfSemester}</div>
+                            <div className="mb-2 text-xs uppercase tracking-[0.16em] text-slate-400">{courseForm.course} · {cfBranch} · Semester {cfSemester}</div>
                             {loadingDbSubjects ? <EmptyState title="Loading subjects..." /> : dbSubjects.length === 0 ? <EmptyState title="No subjects added yet for this class. Add one above." /> : (
-                                <div className="space-y-2">
+                                <div className="campus-scroll max-h-[16rem] space-y-2 overflow-y-auto pr-1">
                                     {dbSubjects.map(s => (
-                                        <div key={s.id} className="flex items-center justify-between gap-3 rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80">
+                                        <div key={s.id} className="flex items-center justify-between gap-3 rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                                             <div>
-                                                <span className="font-semibold text-white">{s.name || s.title}</span>
-                                                <span className="ml-3 text-white/50">{s.code}</span>
+                                                <span className="font-semibold text-slate-900">{s.name || s.title}</span>
+                                                <span className="ml-3 text-slate-400">{s.code}</span>
                                             </div>
-                                            <button onClick={() => void handleDeleteSubject(s.id)} className="rounded-full border border-red-400/20 bg-red-500/10 px-3 py-1 text-xs text-red-200 hover:bg-red-500/20">Remove</button>
+                                            <button onClick={() => void handleDeleteSubject(s.id)} className="rounded-full border border-red-400/20 bg-red-500/10 px-3 py-1 text-xs text-red-600 hover:bg-red-500/20">Remove</button>
                                         </div>
                                     ))}
                                 </div>
@@ -656,7 +702,7 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
                     <PanelCard title="Announcements" description="Select course, branch, semester, and a subject you created in course management before publishing the update.">
                         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                             <div className="space-y-2">
-                                <div className="text-xs uppercase tracking-[0.16em] text-white/45">Course</div>
+                                <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Course</div>
                                 <select
                                     value={announcementSelectedCourse}
                                     onChange={(event) => setAnnouncementForm((current) => ({
@@ -677,7 +723,7 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <div className="text-xs uppercase tracking-[0.16em] text-white/45">Branch</div>
+                                <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Branch</div>
                                 <select
                                     value={announcementSelectedBranch}
                                     onChange={(event) => setAnnouncementForm((current) => ({
@@ -697,7 +743,7 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <div className="text-xs uppercase tracking-[0.16em] text-white/45">Semester</div>
+                                <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Semester</div>
                                 <select
                                     value={announcementSelectedSemester}
                                     onChange={(event) => setAnnouncementForm((current) => ({
@@ -716,7 +762,7 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <div className="text-xs uppercase tracking-[0.16em] text-white/45">Subject</div>
+                                <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Subject</div>
                                 <select
                                     value={announcementSelectedSubjectId}
                                     onChange={(event) => setAnnouncementForm((current) => ({ ...current, subjectId: event.target.value }))}
@@ -734,7 +780,7 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
                             </div>
                         </div>
                         <div className="mt-4 space-y-2">
-                            <div className="text-xs uppercase tracking-[0.16em] text-white/45">Announcement</div>
+                            <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Announcement</div>
                             <div className="space-y-2">
                                 <textarea
                                     value={announcementForm.text}
@@ -745,22 +791,22 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
                                 />
                             </div>
                         </div>
-                        {announcementSaveMsg ? <div className="mt-3 rounded-[1rem] border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">{announcementSaveMsg}</div> : null}
-                        {announcementSaveError ? <div className="mt-3 rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{announcementSaveError}</div> : null}
+                        {announcementSaveMsg ? <div className="mt-3 rounded-[1rem] border border-sky-400/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-700">{announcementSaveMsg}</div> : null}
+                        {announcementSaveError ? <div className="mt-3 rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">{announcementSaveError}</div> : null}
                         <button
                             onClick={() => void handlePublishAnnouncement()}
                             disabled={publishingAnnouncement || teacherSubjects.length === 0}
-                            className="mt-4 rounded-[1rem] border border-white/10 bg-white/10 px-5 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                            className="mt-4 rounded-[1rem] border border-slate-200 bg-slate-100 px-5 py-3 text-sm font-medium text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             {publishingAnnouncement ? 'Publishing...' : 'Publish announcement'}
                         </button>
-                        <div className="mt-5 space-y-3">
+                        <div className="campus-scroll mt-5 max-h-[20rem] space-y-3 overflow-y-auto pr-1">
                             {announcements.length === 0 ? <EmptyState title="No announcements yet." /> : announcements.map((announcement) => (
-                                <div key={announcement.id} className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80">
-                                    <div className="font-semibold text-white">{selectedSubjectName(announcement)}</div>
-                                    {selectedSubjectAudience(announcement) ? <div className="mt-1 text-xs uppercase tracking-[0.16em] text-white/45">{selectedSubjectAudience(announcement)}</div> : null}
+                                <div key={announcement.id} className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                                    <div className="font-semibold text-slate-900">{selectedSubjectName(announcement)}</div>
+                                    {selectedSubjectAudience(announcement) ? <div className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">{selectedSubjectAudience(announcement)}</div> : null}
                                     <div className="mt-2">{announcement.text}</div>
-                                    <div className="mt-3 text-xs text-cyan-100/75">
+                                    <div className="mt-3 text-xs text-sky-700/75">
                                         Sent by {announcement.teacherName || displayName}
                                     </div>
                                 </div>
@@ -772,10 +818,10 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
                 <div className="grid gap-6 xl:grid-cols-2">
                     <PanelCard title="Assignment Creation And Grading" description="Track open assignments and mark them graded as reviews finish.">
                         <div className="grid gap-3 md:grid-cols-2">
-                            <select value={assignmentForm.courseId} onChange={(event) => setAssignmentForm((current) => ({ ...current, courseId: event.target.value }))} className="campus-input rounded-[1rem] px-4 py-3">
-                                <option value="">Select course</option>
-                                {courses.map((course) => (
-                                    <option key={course.id} value={course.id}>{course.title}</option>
+                            <select value={assignmentForm.subjectId} onChange={(event) => setAssignmentForm((current) => ({ ...current, subjectId: event.target.value }))} className="campus-input rounded-[1rem] px-4 py-3">
+                                <option value="">Select subject</option>
+                                {teacherSubjects.map((subject) => (
+                                    <option key={subject.id} value={subject.id}>{subject.name}{subject.code ? ` (${subject.code})` : ''}</option>
                                 ))}
                             </select>
                             <input value={assignmentForm.title} onChange={(event) => setAssignmentForm((current) => ({ ...current, title: event.target.value }))} placeholder="Assignment title" className="campus-input rounded-[1rem] px-4 py-3" />
@@ -784,16 +830,19 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
                         </div>
                         <button
                             onClick={() => {
-                                if (!assignmentForm.title.trim() || !assignmentForm.courseId || !assignmentForm.dueDate) {
+                                if (!assignmentForm.title.trim() || !assignmentForm.subjectId || !assignmentForm.dueDate) {
                                     return;
                                 }
+                                const matchedSubject = teacherSubjects.find((s) => s.id === assignmentForm.subjectId);
                                 saveWorkspace((current) => ({
                                     ...current,
                                     assignments: [
                                         ...current.assignments,
                                         {
                                             id: createId('assignment'),
-                                            courseId: assignmentForm.courseId,
+                                            subjectId: assignmentForm.subjectId,
+                                            subjectName: matchedSubject?.name || '',
+                                            subjectCode: matchedSubject?.code || '',
                                             title: assignmentForm.title.trim(),
                                             dueDate: assignmentForm.dueDate,
                                             gradeWeight: assignmentForm.gradeWeight.trim() || '10',
@@ -801,19 +850,19 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
                                         },
                                     ],
                                 }));
-                                setAssignmentForm({ courseId: '', title: '', dueDate: '', gradeWeight: '' });
+                                setAssignmentForm({ subjectId: '', title: '', dueDate: '', gradeWeight: '' });
                             }}
-                            className="mt-4 rounded-[1rem] bg-gradient-to-r from-cyan-500 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950"
+                            className="mt-4 rounded-[1rem] bg-gradient-to-r from-sky-500 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950"
                         >
                             Create assignment
                         </button>
-                        <div className="mt-5 space-y-3">
-                            {assignments.length === 0 ? <EmptyState title="No assignments created yet." /> : assignments.map((assignment) => (
-                                <div key={assignment.id} className="rounded-[1rem] border border-white/10 bg-white/5 p-4 text-sm text-white/80">
+                        <div className="campus-scroll mt-5 max-h-[20rem] space-y-3 overflow-y-auto pr-1">
+                            {visibleAssignments.length === 0 ? <EmptyState title="No assignments created yet." /> : visibleAssignments.map((assignment) => (
+                                <div key={assignment.id} className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
                                     <div className="flex flex-wrap items-center justify-between gap-3">
                                         <div>
-                                            <div className="font-semibold text-white">{assignment.title}</div>
-                                            <div className="mt-1">{selectedCourseName(assignment.courseId)} • Due {assignment.dueDate}</div>
+                                            <div className="font-semibold text-slate-900">{assignment.title}</div>
+                                            <div className="mt-1">{assignment.subjectName ? `${assignment.subjectName}${assignment.subjectCode ? ` (${assignment.subjectCode})` : ''}` : selectedSubjectLabel(assignment.subjectId || assignment.courseId)} • Due {assignment.dueDate}</div>
                                         </div>
                                         <button
                                             onClick={() => saveWorkspace((current) => ({
@@ -822,7 +871,7 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
                                                     ? { ...item, status: item.status === 'graded' ? 'open' : 'graded' }
                                                     : item),
                                             }))}
-                                            className={`rounded-full px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] ${assignment.status === 'graded' ? 'bg-emerald-500/20 text-emerald-100' : 'bg-white/10 text-white'}`}
+                                            className={`rounded-full px-4 py-2 text-xs font-medium uppercase tracking-[0.18em] ${assignment.status === 'graded' ? 'bg-emerald-500/20 text-emerald-700' : 'bg-slate-100 text-slate-900'}`}
                                         >
                                             {assignment.status === 'graded' ? 'Graded' : 'Mark graded'}
                                         </button>
@@ -925,21 +974,21 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
                                     rollNumber: '',
                                 });
                             }}
-                            className="mt-4 rounded-[1rem] border border-white/10 bg-white/10 px-5 py-3 text-sm font-medium text-white"
+                            className="mt-4 rounded-[1rem] border border-slate-200 bg-slate-100 px-5 py-3 text-sm font-medium text-slate-900"
                         >
                             Add ward record
                         </button>
-                        <div className="mt-5 space-y-3">
-                            {students.length === 0 ? <EmptyState title="No ward records added yet." /> : students.map((student) => (
-                                <div key={student.id} className="rounded-[1rem] border border-white/10 bg-white/5 p-4">
+                        <div className="campus-scroll mt-5 max-h-[20rem] space-y-3 overflow-y-auto pr-1">
+                            {visibleStudents.length === 0 ? <EmptyState title="No ward records added yet." /> : visibleStudents.map((student) => (
+                                <div key={student.id} className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4">
                                     <div className="flex items-center justify-between gap-3">
                                         <div>
-                                            <div className="font-semibold text-white">{student.rollNumber || 'Ward roll number not set'}</div>
-                                            {student.studentName ? <div className="mt-1 text-sm text-white/70">{student.studentName}</div> : null}
-                                            <div className="mt-1 text-sm text-white/60">
+                                            <div className="font-semibold text-slate-900">{student.rollNumber || 'Ward roll number not set'}</div>
+                                            {student.studentName ? <div className="mt-1 text-sm text-slate-600">{student.studentName}</div> : null}
+                                            <div className="mt-1 text-sm text-slate-500">
                                                 {student.subjectName || selectedSubjectName(student)} {student.subjectCode ? `(${student.subjectCode})` : ''}
                                             </div>
-                                            <div className="mt-1 text-xs uppercase tracking-[0.16em] text-white/45">
+                                            <div className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">
                                                 {student.course || 'Course'} | {student.branch || 'Branch'}{student.semester ? ` | Sem ${student.semester}` : ''}
                                             </div>
                                         </div>
@@ -948,29 +997,35 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
                             ))}
                         </div>
                     </PanelCard>
-                </div>
+                                </div>
+                            </>
+                        ) : null}
 
-                <PanelCard title="Attendance Management" description="Mark present or absent for each class session and keep an eye on low-attendance risk before it becomes a problem.">
-                        <TeacherAttendancePanel />
-                </PanelCard>
+                        {activeTeacherSection === 'attendance' ? (
+                            <PanelCard title="Attendance Management" description="Mark present or absent for each class session and keep an eye on low-attendance risk before it becomes a problem.">
+                                <TeacherAttendancePanel />
+                            </PanelCard>
+                        ) : null}
 
-                <div className="grid gap-6 xl:grid-cols-2">
-                    <PanelCard title="Weekly Lesson Planning" description="Map the week so each class has a visible next step.">
+                        {activeTeacherSection === 'planning' ? (
+                            <div className="grid gap-6 xl:grid-cols-2">
+                                <PanelCard title="Weekly Lesson Planning" description="Map the week so each class has a visible next step.">
                         <div className="grid gap-3 md:grid-cols-3">
                             <input type="date" value={lessonForm.date} onChange={(event) => setLessonForm((current) => ({ ...current, date: event.target.value }))} className="campus-input rounded-[1rem] px-4 py-3" />
-                            <select value={lessonForm.courseId} onChange={(event) => setLessonForm((current) => ({ ...current, courseId: event.target.value }))} className="campus-input rounded-[1rem] px-4 py-3">
-                                <option value="">Select course</option>
-                                {courses.map((course) => (
-                                    <option key={course.id} value={course.id}>{course.title}</option>
+                            <select value={lessonForm.subjectId} onChange={(event) => setLessonForm((current) => ({ ...current, subjectId: event.target.value }))} className="campus-input rounded-[1rem] px-4 py-3">
+                                <option value="">Select subject</option>
+                                {teacherSubjects.map((subject) => (
+                                    <option key={subject.id} value={subject.id}>{subject.name}{subject.code ? ` (${subject.code})` : ''}</option>
                                 ))}
                             </select>
                             <input value={lessonForm.topic} onChange={(event) => setLessonForm((current) => ({ ...current, topic: event.target.value }))} placeholder="Lesson topic" className="campus-input rounded-[1rem] px-4 py-3" />
                         </div>
                         <button
                             onClick={() => {
-                                if (!lessonForm.date || !lessonForm.courseId || !lessonForm.topic.trim()) {
+                                if (!lessonForm.date || !lessonForm.subjectId || !lessonForm.topic.trim()) {
                                     return;
                                 }
+                                const matchedLessonSubject = teacherSubjects.find((s) => s.id === lessonForm.subjectId);
                                 saveWorkspace((current) => ({
                                     ...current,
                                     lessonPlans: [
@@ -978,22 +1033,24 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
                                         {
                                             id: createId('lesson'),
                                             date: lessonForm.date,
-                                            courseId: lessonForm.courseId,
+                                            subjectId: lessonForm.subjectId,
+                                            subjectName: matchedLessonSubject?.name || '',
+                                            subjectCode: matchedLessonSubject?.code || '',
                                             topic: lessonForm.topic.trim(),
                                         },
                                     ],
                                 }));
-                                setLessonForm({ date: '', topic: '', courseId: '' });
+                                setLessonForm({ date: '', topic: '', subjectId: '' });
                             }}
-                            className="mt-4 rounded-[1rem] bg-gradient-to-r from-cyan-500 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950"
+                            className="mt-4 rounded-[1rem] bg-gradient-to-r from-sky-500 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950"
                         >
                             Save lesson plan
                         </button>
-                        <div className="mt-5 space-y-3">
+                        <div className="campus-scroll mt-5 max-h-[16rem] space-y-3 overflow-y-auto pr-1">
                             {lessonPlans.length === 0 ? <EmptyState title="No lesson plans for this week yet." /> : lessonPlans.map((plan) => (
-                                <div key={plan.id} className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80">
-                                    <div className="font-semibold text-white">{plan.topic}</div>
-                                    <div className="mt-1">{selectedCourseName(plan.courseId)} • {plan.date}</div>
+                                <div key={plan.id} className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                                    <div className="font-semibold text-slate-900">{plan.topic}</div>
+                                    <div className="mt-1">{plan.subjectName ? `${plan.subjectName}${plan.subjectCode ? ` (${plan.subjectCode})` : ''}` : selectedSubjectLabel(plan.subjectId || plan.courseId)} • {plan.date}</div>
                                 </div>
                             ))}
                         </div>
@@ -1025,243 +1082,52 @@ export function TeacherDashboard({ displayName, profile, teacherWorkspace, setTe
                                 }));
                                 setMessageForm({ recipient: '', subject: '', message: '' });
                             }}
-                            className="mt-4 rounded-[1rem] border border-white/10 bg-white/10 px-5 py-3 text-sm font-medium text-white"
+                            className="mt-4 rounded-[1rem] border border-slate-200 bg-slate-100 px-5 py-3 text-sm font-medium text-slate-900"
                         >
                             Log communication
                         </button>
-                        <div className="mt-5 space-y-3">
+                        <div className="campus-scroll mt-5 max-h-[16rem] space-y-3 overflow-y-auto pr-1">
                             {communications.length === 0 ? <EmptyState title="No teacher-student communication logs yet." /> : communications.map((entry) => (
-                                <div key={entry.id} className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80">
-                                    <div className="font-semibold text-white">{entry.subject}</div>
+                                <div key={entry.id} className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                                    <div className="font-semibold text-slate-900">{entry.subject}</div>
                                     <div className="mt-1">To {entry.recipient}</div>
-                                    <div className="mt-2 text-white/65">{entry.message}</div>
+                                    <div className="mt-2 text-slate-500">{entry.message}</div>
                                 </div>
                             ))}
                         </div>
                     </PanelCard>
-                </div>
+                            </div>
+                        ) : null}
 
-                <NoticeBoard role="teacher" className="campus-panel rounded-[1.7rem] p-6" />
+                        {activeTeacherSection === 'notices' ? (
+                            <NoticeBoard role="teacher" className="campus-panel rounded-[1.7rem] p-6" />
+                        ) : null}
 
-                <PanelCard
+                        {activeTeacherSection === 'jcufa' ? (
+                            <PanelCard
                     title="JCUFA Portal"
                     description="Faculty association group chats — Announcements, Official Discussion, and Unofficial. Position holders can post announcements; all members can acknowledge."
                 >
                     <JcufaChatPanel userId={profile?.user_id} userProfile={profile} />
-                </PanelCard>
+                            </PanelCard>
+                        ) : null}
 
-                <PanelCard
+                        {activeTeacherSection === 'club-approvals' ? (
+                            <PanelCard
                     title="Club Event Approvals"
                     description="Events from your assigned club waiting for your Level 1 approval before going to Admin."
                 >
                     <CoordinatorEventPanel />
-                </PanelCard>
-
+                            </PanelCard>
+                        ) : null}
+                    </div>
+                </div>
             </div>
         </div>
     );
 }
 
 
-function AdminSubjectAssignmentPanel({ teachers }) {
-    const [data, setData] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [selectedTeacherId, setSelectedTeacherId] = useState('');
-    const [selectedSubjectId, setSelectedSubjectId] = useState('');
-    const [msg, setMsg] = useState('');
-    const [error, setError] = useState('');
-
-    const loadData = async () => {
-        setLoading(true);
-        const res = await fetch('/api/admin/assign-subjects', { credentials: 'same-origin' });
-        const payload = await res.json().catch(() => ({}));
-        if (res.ok) {
-            setData(payload);
-        } else {
-            setError(payload.error || 'Failed to load assignments.');
-        }
-        setLoading(false);
-    };
-
-    useEffect(() => {
-        const t = setTimeout(() => void loadData(), 0);
-        return () => clearTimeout(t);
-    }, []);
-
-    const assignments = data?.assignments || [];
-    const subjects = data?.subjects || [];
-    const allTeachers = teachers.length > 0 ? teachers : (data?.teachers || []);
-    const filteredAssignments = selectedTeacherId ? assignments.filter(a => a.teacherId === selectedTeacherId) : assignments;
-
-    const handleAssign = async () => {
-        if (!selectedTeacherId || !selectedSubjectId) return;
-        setMsg(''); setError('');
-        const res = await fetch('/api/admin/assign-subjects', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ teacherId: selectedTeacherId, subjectId: selectedSubjectId }),
-        });
-        const payload = await res.json().catch(() => ({}));
-        if (res.ok) {
-            setMsg('Subject assigned successfully.');
-            setSelectedSubjectId('');
-            void loadData();
-        } else {
-            setError(payload.error || 'Failed to assign subject.');
-        }
-    };
-
-    const handleRemove = async (teacherId, subjectId) => {
-        const res = await fetch('/api/admin/assign-subjects', {
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ teacherId, subjectId }),
-        });
-        if (res.ok) { void loadData(); }
-    };
-
-    return (
-        <PanelCard
-            title="Subject Assignments"
-            description="Assign subjects to teachers. Teachers can only mark attendance for their assigned subjects."
-            action={<button onClick={() => void loadData()} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-white">Refresh</button>}
-        >
-            <div className="grid gap-3 md:grid-cols-3">
-                <select value={selectedTeacherId} onChange={e => setSelectedTeacherId(e.target.value)} className="campus-input rounded-[1rem] px-4 py-3">
-                    <option value="">Select teacher</option>
-                    {allTeachers.map(t => <option key={t.userId} value={t.userId}>{t.name}</option>)}
-                </select>
-                <select value={selectedSubjectId} onChange={e => setSelectedSubjectId(e.target.value)} className="campus-input rounded-[1rem] px-4 py-3" disabled={!selectedTeacherId}>
-                    <option value="">Select subject</option>
-                    {subjects.map(s => <option key={s.id} value={s.id}>{s.name} ({s.code}) — {s.course} {s.branch} Sem {s.semester}</option>)}
-                </select>
-                <button onClick={() => void handleAssign()} disabled={!selectedTeacherId || !selectedSubjectId} className="rounded-[1rem] bg-gradient-to-r from-cyan-500 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950 disabled:opacity-50">
-                    Assign Subject
-                </button>
-            </div>
-            {msg && <div className="mt-3 rounded-[1rem] border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">{msg}</div>}
-            {error && <div className="mt-3 rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{error}</div>}
-            {loading ? <EmptyState title="Loading assignments..." /> : filteredAssignments.length === 0 ? <EmptyState title={selectedTeacherId ? 'No subjects assigned to this teacher yet.' : 'No subject assignments found.'} /> : (
-                <div className="mt-4 space-y-2">
-                    {filteredAssignments.map(a => (
-                        <div key={`${a.teacherId}-${a.subjectId}`} className="flex items-center justify-between gap-3 rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80">
-                            <div>
-                                <span className="font-semibold text-white">{a.teacher?.name || a.teacherId}</span>
-                                <span className="mx-2 text-white/40">→</span>
-                                <span>{a.subject?.name} ({a.subject?.code}) — {a.subject?.course} {a.subject?.branch} Sem {a.subject?.semester}</span>
-                            </div>
-                            <button onClick={() => void handleRemove(a.teacherId, a.subjectId)} className="rounded-full border border-red-400/20 bg-red-500/10 px-3 py-1 text-xs text-red-200 hover:bg-red-500/20">Remove</button>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </PanelCard>
-    );
-}
-
-function AdminStudentRegistrationPanel({ studentProfiles }) {
-    const [registeredStudents, setRegisteredStudents] = useState([]);
-    const [loadingReg, setLoadingReg] = useState(false);
-    const [regMsg, setRegMsg] = useState('');
-    const [regError, setRegError] = useState('');
-    const [form, setForm] = useState({ userId: '', name: '', rollNumber: '', course: '', branch: '', semester: '' });
-
-    const loadStudents = async () => {
-        setLoadingReg(true);
-        const res = await fetch('/api/admin/students', { credentials: 'same-origin' });
-        const payload = await res.json().catch(() => ({}));
-        if (res.ok) setRegisteredStudents(payload.students || []);
-        setLoadingReg(false);
-    };
-
-    useEffect(() => {
-        const t = setTimeout(() => void loadStudents(), 0);
-        return () => clearTimeout(t);
-    }, []);
-
-    const selectedProfile = studentProfiles.find(p => p.userId === form.userId);
-    useEffect(() => {
-        if (selectedProfile) {
-            const t = setTimeout(() => {
-                setForm(prev => ({
-                    ...prev,
-                    name: selectedProfile.name || prev.name,
-                    rollNumber: selectedProfile.rollNumber || prev.rollNumber,
-                    course: selectedProfile.course || prev.course,
-                    branch: selectedProfile.branch || prev.branch,
-                    semester: selectedProfile.semester ? `${selectedProfile.semester}` : prev.semester,
-                }));
-            }, 0);
-            return () => clearTimeout(t);
-        }
-    }, [form.userId, selectedProfile]);
-
-    const handleRegister = async () => {
-        setRegMsg(''); setRegError('');
-        const res = await fetch('/api/admin/students', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ userId: form.userId, name: form.name, rollNumber: form.rollNumber, course: form.course, branch: form.branch, semester: Number(form.semester) }),
-        });
-        const payload = await res.json().catch(() => ({}));
-        if (res.ok) {
-            setRegMsg('Student registered successfully.');
-            setForm({ userId: '', name: '', rollNumber: '', course: '', branch: '', semester: '' });
-            void loadStudents();
-        } else {
-            setRegError(payload.error || 'Failed to register student.');
-        }
-    };
-
-    const handleDelete = async (id) => {
-        const res = await fetch(`/api/admin/students/${id}`, { method: 'DELETE', credentials: 'same-origin' });
-        if (res.ok) void loadStudents();
-    };
-
-    return (
-        <PanelCard
-            title="Student Registration"
-            description="Register student profiles into the attendance system with their academic program details."
-            action={<button onClick={() => void loadStudents()} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-white">Refresh</button>}
-        >
-            <div className="grid gap-3 md:grid-cols-3">
-                <select value={form.userId} onChange={e => setForm(f => ({ ...f, userId: e.target.value }))} className="campus-input rounded-[1rem] px-4 py-3">
-                    <option value="">Select student profile</option>
-                    {studentProfiles.map(p => <option key={p.userId} value={p.userId}>{p.name} ({p.email})</option>)}
-                </select>
-                <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Full name" className="campus-input rounded-[1rem] px-4 py-3" />
-                <input value={form.rollNumber} onChange={e => setForm(f => ({ ...f, rollNumber: e.target.value }))} placeholder="Roll number" className="campus-input rounded-[1rem] px-4 py-3" />
-                <input value={form.course} onChange={e => setForm(f => ({ ...f, course: e.target.value }))} placeholder="Course (B.Tech)" className="campus-input rounded-[1rem] px-4 py-3" />
-                <input value={form.branch} onChange={e => setForm(f => ({ ...f, branch: e.target.value }))} placeholder="Branch (CSE)" className="campus-input rounded-[1rem] px-4 py-3" />
-                <input type="number" min="1" max="12" value={form.semester} onChange={e => setForm(f => ({ ...f, semester: e.target.value }))} placeholder="Semester" className="campus-input rounded-[1rem] px-4 py-3" />
-            </div>
-            <button onClick={() => void handleRegister()} disabled={!form.userId || !form.name || !form.rollNumber || !form.course || !form.branch || !form.semester} className="mt-4 rounded-[1rem] bg-gradient-to-r from-cyan-500 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950 disabled:opacity-50">
-                Register Student
-            </button>
-            {regMsg && <div className="mt-3 rounded-[1rem] border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">{regMsg}</div>}
-            {regError && <div className="mt-3 rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{regError}</div>}
-            {loadingReg ? <EmptyState title="Loading registered students..." /> : registeredStudents.length === 0 ? <EmptyState title="No students registered in the attendance system yet." /> : (
-                <div className="mt-4 space-y-2">
-                    {registeredStudents.map(s => (
-                        <div key={s.id} className="flex items-center justify-between gap-3 rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80">
-                            <div>
-                                <span className="font-semibold text-white">{s.rollNumber}</span>
-                                <span className="mx-2 text-white/40">·</span>
-                                <span>{s.name}</span>
-                                <span className="mx-2 text-white/40">·</span>
-                                <span className="text-white/55">{s.course} {s.branch} Sem {s.semester}</span>
-                            </div>
-                            <button onClick={() => void handleDelete(s.id)} className="rounded-full border border-red-400/20 bg-red-500/10 px-3 py-1 text-xs text-red-200 hover:bg-red-500/20">Remove</button>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </PanelCard>
-    );
-}
 
 const JCUFA_POSITIONS = ['President', 'Vice President', 'Secretary', 'Treasurer', 'Member', 'Other'];
 
@@ -1312,18 +1178,18 @@ function JcufaPositionPanel({ teachers, onRefresh }) {
                 <button
                     onClick={() => void handleAssign()}
                     disabled={!selectedTeacherId || !selectedPosition || loading}
-                    className="rounded-[1rem] bg-gradient-to-r from-cyan-500 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950 disabled:opacity-50"
+                    className="rounded-[1rem] bg-gradient-to-r from-sky-500 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950 disabled:opacity-50"
                 >
                     {loading ? 'Saving…' : 'Save Position'}
                 </button>
             </div>
-            {msg && <div className="rounded-[1rem] border border-cyan-400/20 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-100">{msg}</div>}
-            {err && <div className="rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{err}</div>}
-            <div className="space-y-2">
+            {msg && <div className="rounded-[1rem] border border-sky-400/20 bg-sky-500/10 px-4 py-3 text-sm text-sky-700">{msg}</div>}
+            {err && <div className="rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">{err}</div>}
+            <div className="campus-scroll max-h-[16rem] space-y-2 overflow-y-auto pr-1">
                 {teachers.filter(t => t.jcufa_position).map(t => (
-                    <div key={t.user_id} className="flex items-center justify-between gap-3 rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80">
-                        <span className="font-semibold text-white">{t.display_name || t.full_name || t.email}</span>
-                        <span className="rounded-full bg-amber-500/20 border border-amber-400/30 px-3 py-1 text-xs text-amber-200">{t.jcufa_position}</span>
+                    <div key={t.user_id} className="flex items-center justify-between gap-3 rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                        <span className="font-semibold text-slate-900">{t.display_name || t.full_name || t.email}</span>
+                        <span className="rounded-full bg-amber-500/20 border border-amber-400/30 px-3 py-1 text-xs text-amber-700">{t.jcufa_position}</span>
                     </div>
                 ))}
                 {teachers.filter(t => t.jcufa_position).length === 0 && (
@@ -1345,6 +1211,7 @@ export function AdminDashboard({ displayName, profile, onSignOut }) {
     const [reviewNotes, setReviewNotes] = useState('');
     const [userManagementTab, setUserManagementTab] = useState('teachers');
     const [userSearchTerm, setUserSearchTerm] = useState('');
+    const [activeAdminSection, setActiveAdminSection] = useState('teacher-verification');
 
     const loadAdminData = useCallback(async () => {
         setLoading(true);
@@ -1393,6 +1260,14 @@ export function AdminDashboard({ displayName, profile, onSignOut }) {
     const pendingCount = teacherRequests.filter((item) => item.status === 'pending').length;
     const approvedCount = teacherRequests.filter((item) => item.status === 'approved').length;
     const pendingTeacherRequests = teacherRequests.filter((item) => item.status === 'pending');
+    const adminSections = [
+        { id: 'teacher-verification', label: 'Teacher Verification', description: 'Pending teacher reviews and approval workflow.' },
+        { id: 'operations', label: 'Operations', description: 'Knowledge, notices, issues, and event approvals.' },
+        { id: 'jcufa', label: 'JCUFA Positions', description: 'Assign association roles to faculty accounts.' },
+        { id: 'monitoring', label: 'Monitoring', description: 'Sessions, audit trails, and system visibility.' },
+        { id: 'user-management', label: 'User Management', description: 'Search teacher and student profiles.' },
+        { id: 'activity-logs', label: 'Activity Logs', description: 'Tracked actions across the platform.' },
+    ];
 
     const profileMap = useMemo(() => Object.fromEntries(profiles.map((item) => [item.user_id, item])), [profiles]);
     const teacherProfiles = useMemo(() => profiles.filter((item) => item.role === 'teacher'), [profiles]);
@@ -1449,18 +1324,18 @@ export function AdminDashboard({ displayName, profile, onSignOut }) {
                     <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
                         <div>
                             <div className="campus-kicker">Admin Panel</div>
-                            <h1 className="mt-3 text-3xl font-bold text-white">Verification queue, user operations, and security visibility</h1>
-                            <p className="mt-3 max-w-3xl text-sm leading-7 text-white/65">
+                            <h1 className="mt-3 text-3xl font-bold text-slate-900">Verification queue, user operations, and security visibility</h1>
+                            <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-500">
                                 You are signed in as the single admin account. Multi-device access remains available while every admin session and tracked activity is visible below.
                             </p>
                         </div>
                         <div className="flex flex-col gap-3 sm:flex-row">
-                            <div className="campus-panel rounded-[1.3rem] px-4 py-3 text-sm text-white/80">
-                                <div className="text-[11px] uppercase tracking-[0.2em] text-white/45">Admin</div>
-                                <div className="mt-1 text-white">{displayName}</div>
-                                <div className="text-white/60">{profile?.admin_id || 'Configured admin'}</div>
+                            <div className="campus-panel rounded-[1.3rem] px-4 py-3 text-sm text-slate-700">
+                                <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Admin</div>
+                                <div className="mt-1 text-slate-900">{displayName}</div>
+                                <div className="text-slate-500">{profile?.admin_id || 'Configured admin'}</div>
                             </div>
-                            <button onClick={onSignOut} className="rounded-full border border-red-300/20 bg-red-500/10 px-5 py-2.5 text-sm font-medium text-red-100 transition hover:bg-red-500/20">
+                            <button onClick={onSignOut} className="rounded-full border border-red-300/20 bg-red-500/10 px-5 py-2.5 text-sm font-medium text-red-600 transition hover:bg-red-500/20">
                                 Logout
                             </button>
                         </div>
@@ -1469,76 +1344,93 @@ export function AdminDashboard({ displayName, profile, onSignOut }) {
 
                 <div className="grid gap-4 md:grid-cols-4">
                     <div className="campus-panel rounded-[1.5rem] p-5">
-                        <div className="text-xs uppercase tracking-[0.18em] text-white/45">Pending Teachers</div>
-                        <div className="mt-3 text-3xl font-bold text-white">{pendingCount}</div>
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Pending Teachers</div>
+                        <div className="mt-3 text-3xl font-bold text-slate-900">{pendingCount}</div>
                     </div>
                     <div className="campus-panel rounded-[1.5rem] p-5">
-                        <div className="text-xs uppercase tracking-[0.18em] text-white/45">Approved Teachers</div>
-                        <div className="mt-3 text-3xl font-bold text-white">{approvedCount}</div>
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Approved Teachers</div>
+                        <div className="mt-3 text-3xl font-bold text-slate-900">{approvedCount}</div>
                     </div>
                     <div className="campus-panel rounded-[1.5rem] p-5">
-                        <div className="text-xs uppercase tracking-[0.18em] text-white/45">Students</div>
-                        <div className="mt-3 text-3xl font-bold text-white">{studentCount}</div>
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Students</div>
+                        <div className="mt-3 text-3xl font-bold text-slate-900">{studentCount}</div>
                     </div>
                     <div className="campus-panel rounded-[1.5rem] p-5">
-                        <div className="text-xs uppercase tracking-[0.18em] text-white/45">Tracked Sessions</div>
-                        <div className="mt-3 text-3xl font-bold text-white">{sessions.length}</div>
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Tracked Sessions</div>
+                        <div className="mt-3 text-3xl font-bold text-slate-900">{sessions.length}</div>
                     </div>
                 </div>
 
                 {error ? (
-                    <div className="rounded-[1.2rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                    <div className="rounded-[1.2rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">
                         {error}
                     </div>
                 ) : null}
 
-                <AdminKnowledgePanel />
+                <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+                    <DashboardSidebar
+                        title="Admin Functions"
+                        description="Move between approvals, monitoring, operations, and user oversight from a scrollable left stack."
+                        items={adminSections}
+                        activeItem={activeAdminSection}
+                        onSelect={setActiveAdminSection}
+                    />
 
-                <AdminNoticePanel />
+                    <div className="min-w-0 space-y-6">
+                        {activeAdminSection === 'operations' ? (
+                            <>
+                                <AdminKnowledgePanel />
 
-                <AdminIssueManagementPanel />
+                                <AdminNoticePanel />
 
-                <PanelCard
-                    title="Club Event Approvals"
-                    description="Final approval queue. Events approved by coordinators wait here. Approve to publish them to the student portal, or reject with a reason."
-                    action={null}
-                >
-                    <AdminEventApprovalPanel />
-                </PanelCard>
+                                <AdminIssueManagementPanel />
 
-                <PanelCard
-                    title="JCUFA Position Management"
-                    description="Assign or update JCUFA positions for teacher accounts. Position holders (President, VP, Secretary, Treasurer) can post in the Announcements group."
-                >
-                    <JcufaPositionPanel teachers={profiles.filter(p => p.role === 'teacher')} onRefresh={loadAdminData} />
-                </PanelCard>
+                                <PanelCard
+                                    title="Club Event Approvals"
+                                    description="Final approval queue. Events approved by coordinators wait here. Approve to publish them to the student portal, or reject with a reason."
+                                    action={null}
+                                >
+                                    <AdminEventApprovalPanel />
+                                </PanelCard>
+                            </>
+                        ) : null}
 
-                <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-                    <PanelCard
-                        title="Teacher Verification Management"
-                        description="Review pending teacher signups, inspect ID images, and approve or reject requests."
-                        action={<button onClick={() => void loadAdminData()} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-white">Refresh</button>}
-                    >
+                        {activeAdminSection === 'jcufa' ? (
+                            <PanelCard
+                                title="JCUFA Position Management"
+                                description="Assign or update JCUFA positions for teacher accounts. Position holders can post in the Announcements group."
+                            >
+                                <JcufaPositionPanel teachers={profiles.filter(p => p.role === 'teacher')} onRefresh={loadAdminData} />
+                            </PanelCard>
+                        ) : null}
+
+                        {activeAdminSection === 'teacher-verification' ? (
+                            <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+                                <PanelCard
+                                    title="Teacher Verification Management"
+                                    description="Review pending teacher signups, inspect ID images, and approve or reject requests."
+                                    action={<button onClick={() => void loadAdminData()} className="rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-900">Refresh</button>}
+                                >
                         {loading ? <EmptyState title="Loading verification queue..." /> : pendingTeacherRequests.length === 0 ? <EmptyState title="No pending teacher verification requests." /> : (
-                            <div className="space-y-3">
+                            <div className="campus-scroll max-h-[28rem] space-y-3 overflow-y-auto pr-1">
                                 {pendingTeacherRequests.map((request) => {
                                     const requestProfile = profileMap[request.user_id];
                                     return (
-                                        <div key={request.id} className="rounded-[1rem] border border-white/10 bg-white/5 p-4">
+                                        <div key={request.id} className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4">
                                             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                                 <div>
-                                                    <div className="text-lg font-semibold text-white">{requestProfile?.display_name || request.full_name || 'Teacher request'}</div>
-                                                    <div className="mt-1 text-sm text-white/60">{request.email || requestProfile?.email}</div>
-                                                    <div className="mt-2 text-sm text-white/70">Employee ID: {request.employee_id}</div>
-                                                    <div className="text-sm text-white/70">Phone: {request.phone_number || requestProfile?.phone_number || 'Not provided'}</div>
-                                                    <div className="mt-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.18em] text-white/60 inline-flex capitalize">
+                                                    <div className="text-lg font-semibold text-slate-900">{requestProfile?.display_name || request.full_name || 'Teacher request'}</div>
+                                                    <div className="mt-1 text-sm text-slate-500">{request.email || requestProfile?.email}</div>
+                                                    <div className="mt-2 text-sm text-slate-600">Employee ID: {request.employee_id}</div>
+                                                    <div className="text-sm text-slate-600">Phone: {request.phone_number || requestProfile?.phone_number || 'Not provided'}</div>
+                                                    <div className="mt-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs uppercase tracking-[0.18em] text-slate-500 inline-flex capitalize">
                                                         {request.status}
                                                     </div>
                                                 </div>
                                                 <button onClick={() => {
                                                     setSelectedRequest(request);
                                                     setReviewNotes(request.review_notes || '');
-                                                }} className="rounded-[1rem] bg-gradient-to-r from-cyan-500 to-emerald-400 px-4 py-3 text-sm font-semibold text-slate-950">
+                                                }} className="rounded-[1rem] bg-gradient-to-r from-sky-500 to-emerald-400 px-4 py-3 text-sm font-semibold text-slate-950">
                                                     Review request
                                                 </button>
                                             </div>
@@ -1547,120 +1439,147 @@ export function AdminDashboard({ displayName, profile, onSignOut }) {
                                 })}
                             </div>
                         )}
-                    </PanelCard>
+                                </PanelCard>
 
-                    <div className="space-y-6">
-                        <PanelCard title="System Monitoring" description="Role distribution, device sessions, and audit visibility for the admin account.">
-                            <div className="space-y-3 text-sm text-white/75">
-                                <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Teacher accounts: {teacherCount}</div>
-                                <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Student accounts: {studentCount}</div>
-                                <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">Recent audited actions: {activityLogs.length}</div>
+                                <div className="space-y-6">
+                                    <PanelCard title="System Monitoring" description="Role distribution, device sessions, and audit visibility for the admin account.">
+                            <div className="space-y-3 text-sm text-slate-600">
+                                <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">Teacher accounts: {teacherCount}</div>
+                                <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">Student accounts: {studentCount}</div>
+                                <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">Recent audited actions: {activityLogs.length}</div>
                             </div>
-                        </PanelCard>
+                                    </PanelCard>
 
-                        <PanelCard title="Security And Audit Trails" description="Recent admin session records across devices.">
+                                    <PanelCard title="Security And Audit Trails" description="Recent admin session records across devices.">
                             {sessions.length === 0 ? <EmptyState title="No admin sessions logged yet." /> : (
-                                <div className="space-y-3">
+                                <div className="campus-scroll max-h-[16rem] space-y-3 overflow-y-auto pr-1">
                                     {sessions.map((session) => (
-                                        <div key={session.id} className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/75">
-                                            <div className="font-semibold text-white">{session.device_name || 'Unknown device'}</div>
+                                        <div key={session.id} className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                                            <div className="font-semibold text-slate-900">{session.device_name || 'Unknown device'}</div>
                                             <div className="mt-1">IP: {session.ip_address || 'Unknown'} • {session.location_label || 'Unknown location'}</div>
-                                            <div className="mt-1 text-white/55">Last seen {new Date(session.last_seen_at || session.created_at).toLocaleString()}</div>
+                                            <div className="mt-1 text-slate-500">Last seen {new Date(session.last_seen_at || session.created_at).toLocaleString()}</div>
                                         </div>
                                     ))}
                                 </div>
                             )}
-                        </PanelCard>
-                    </div>
-                </div>
+                                    </PanelCard>
+                                </div>
+                            </div>
+                        ) : null}
 
-                <div className="grid gap-6 xl:grid-cols-2">
-                    <PanelCard title="User Management" description="Search and review student and teacher accounts from separate admin tabs.">
+                        {activeAdminSection === 'monitoring' ? (
+                            <div className="grid gap-6 xl:grid-cols-2">
+                                <PanelCard title="System Monitoring" description="Role distribution, device sessions, and audit visibility for the admin account.">
+                                    <div className="space-y-3 text-sm text-slate-600">
+                                        <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">Teacher accounts: {teacherCount}</div>
+                                        <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">Student accounts: {studentCount}</div>
+                                        <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">Recent audited actions: {activityLogs.length}</div>
+                                    </div>
+                                </PanelCard>
+
+                                <PanelCard title="Security And Audit Trails" description="Recent admin session records across devices.">
+                                    {sessions.length === 0 ? <EmptyState title="No admin sessions logged yet." /> : (
+                                        <div className="campus-scroll max-h-[24rem] space-y-3 overflow-y-auto pr-1">
+                                            {sessions.map((session) => (
+                                                <div key={session.id} className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                                                    <div className="font-semibold text-slate-900">{session.device_name || 'Unknown device'}</div>
+                                                    <div className="mt-1">IP: {session.ip_address || 'Unknown'} • {session.location_label || 'Unknown location'}</div>
+                                                    <div className="mt-1 text-slate-500">Last seen {new Date(session.last_seen_at || session.created_at).toLocaleString()}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </PanelCard>
+                            </div>
+                        ) : null}
+
+                        {activeAdminSection === 'user-management' ? (
+                            <PanelCard title="User Management" description="Search and review student and teacher accounts from separate admin tabs.">
                         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                             <div className="flex flex-wrap gap-2">
-                                <button onClick={() => setUserManagementTab('teachers')} className={`rounded-full px-4 py-2 text-sm font-medium transition ${userManagementTab === 'teachers' ? 'bg-gradient-to-r from-cyan-500 to-emerald-400 text-slate-950' : 'border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'}`}>
+                                <button onClick={() => setUserManagementTab('teachers')} className={`rounded-full px-4 py-2 text-sm font-medium transition ${userManagementTab === 'teachers' ? 'bg-gradient-to-r from-sky-500 to-emerald-400 text-slate-950' : 'border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}>
                                     Teachers ({teacherProfiles.length})
                                 </button>
-                                <button onClick={() => setUserManagementTab('students')} className={`rounded-full px-4 py-2 text-sm font-medium transition ${userManagementTab === 'students' ? 'bg-gradient-to-r from-cyan-500 to-emerald-400 text-slate-950' : 'border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'}`}>
+                                <button onClick={() => setUserManagementTab('students')} className={`rounded-full px-4 py-2 text-sm font-medium transition ${userManagementTab === 'students' ? 'bg-gradient-to-r from-sky-500 to-emerald-400 text-slate-950' : 'border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}>
                                     Students ({studentProfiles.length})
                                 </button>
                             </div>
                             <input value={userSearchTerm} onChange={(event) => setUserSearchTerm(event.target.value)} placeholder={`Search ${userManagementTab === 'teachers' ? 'teachers' : 'students'} by name, email, username, phone, or ID`} className="campus-input w-full rounded-[1rem] px-4 py-3 lg:max-w-md" />
                         </div>
-                        <div className="mt-4 rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/60">
+                        <div className="mt-4 rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
                             Showing {visibleUserProfiles.length} {userManagementTab === 'teachers' ? 'teacher' : 'student'} account{visibleUserProfiles.length === 1 ? '' : 's'}.
                         </div>
                         {profiles.length === 0 ? <div className="mt-5"><EmptyState title="No profiles found." /></div> : visibleUserProfiles.length === 0 ? <div className="mt-5"><EmptyState title={`No ${userManagementTab} matched your search.`} /></div> : (
-                            <div className="mt-5 space-y-3">
+                            <div className="campus-scroll mt-5 max-h-[40rem] space-y-3 overflow-y-auto pr-1">
                                 {visibleUserProfiles.slice(0, 24).map((entry) => (
-                                    <div key={entry.user_id} className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-4 text-sm text-white/75">
+                                    <div key={entry.user_id} className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
                                         <div className="flex flex-wrap items-start justify-between gap-3">
                                             <div>
-                                                <div className="font-semibold text-white">{entry.display_name || entry.full_name || entry.username || 'Unnamed user'}</div>
-                                                <div className="mt-1 text-white/60">{entry.email || 'No email available'}</div>
+                                                <div className="font-semibold text-slate-900">{entry.display_name || entry.full_name || entry.username || 'Unnamed user'}</div>
+                                                <div className="mt-1 text-slate-500">{entry.email || 'No email available'}</div>
                                             </div>
                                             <div className="text-right">
-                                                <div className="capitalize text-white">{entry.role || 'student'}</div>
-                                                <div className="capitalize text-white/55">{entry.verification_status || 'approved'}</div>
+                                                <div className="capitalize text-slate-900">{entry.role || 'student'}</div>
+                                                <div className="capitalize text-slate-500">{entry.verification_status || 'approved'}</div>
                                             </div>
                                         </div>
                                         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                                            <div className="rounded-[0.9rem] border border-white/10 bg-slate-950/25 px-3 py-2">
-                                                <div className="text-[11px] uppercase tracking-[0.18em] text-white/45">Username</div>
-                                                <div className="mt-1 text-white">{entry.username || 'Not set'}</div>
+                                            <div className="rounded-[0.9rem] border border-slate-200 bg-slate-800/25 px-3 py-2">
+                                                <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Username</div>
+                                                <div className="mt-1 text-slate-900">{entry.username || 'Not set'}</div>
                                             </div>
-                                            <div className="rounded-[0.9rem] border border-white/10 bg-slate-950/25 px-3 py-2">
-                                                <div className="text-[11px] uppercase tracking-[0.18em] text-white/45">Phone</div>
-                                                <div className="mt-1 text-white">{entry.phone_number || 'Not provided'}</div>
+                                            <div className="rounded-[0.9rem] border border-slate-200 bg-slate-800/25 px-3 py-2">
+                                                <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">{entry.role === 'student' ? 'Roll Number' : 'Phone'}</div>
+                                                <div className="mt-1 text-slate-900">{entry.role === 'student' ? (entry.roll_number || 'Not set') : (entry.phone_number || 'Not provided')}</div>
                                             </div>
-                                            <div className="rounded-[0.9rem] border border-white/10 bg-slate-950/25 px-3 py-2">
-                                                <div className="text-[11px] uppercase tracking-[0.18em] text-white/45">Employee ID</div>
-                                                <div className="mt-1 text-white">{entry.employee_id || 'Not applicable'}</div>
+                                            <div className="rounded-[0.9rem] border border-slate-200 bg-slate-800/25 px-3 py-2">
+                                                <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">{entry.role === 'student' ? 'Semester' : 'Employee ID'}</div>
+                                                <div className="mt-1 text-slate-900">{entry.role === 'student' ? (entry.semester ? `Semester ${entry.semester}` : 'Not set') : (entry.employee_id || 'Not applicable')}</div>
                                             </div>
-                                            <div className="rounded-[0.9rem] border border-white/10 bg-slate-950/25 px-3 py-2">
-                                                <div className="text-[11px] uppercase tracking-[0.18em] text-white/45">Full Name</div>
-                                                <div className="mt-1 text-white">{entry.full_name || entry.display_name || 'Not set'}</div>
+                                            <div className="rounded-[0.9rem] border border-slate-200 bg-slate-800/25 px-3 py-2">
+                                                <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Full Name</div>
+                                                <div className="mt-1 text-slate-900">{entry.full_name || entry.display_name || 'Not set'}</div>
                                             </div>
-                                            <div className="rounded-[0.9rem] border border-white/10 bg-slate-950/25 px-3 py-2">
-                                                <div className="text-[11px] uppercase tracking-[0.18em] text-white/45">Last Seen</div>
-                                                <div className="mt-1 text-white">{entry.last_seen ? new Date(entry.last_seen).toLocaleString() : 'No recent activity'}</div>
+                                            <div className="rounded-[0.9rem] border border-slate-200 bg-slate-800/25 px-3 py-2">
+                                                <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Last Seen</div>
+                                                <div className="mt-1 text-slate-900">{entry.last_seen ? new Date(entry.last_seen).toLocaleString() : 'No recent activity'}</div>
                                             </div>
-                                            <div className="rounded-[0.9rem] border border-white/10 bg-slate-950/25 px-3 py-2">
-                                                <div className="text-[11px] uppercase tracking-[0.18em] text-white/45">User ID</div>
-                                                <div className="mt-1 break-all text-white/80">{entry.user_id}</div>
+                                            <div className="rounded-[0.9rem] border border-slate-200 bg-slate-800/25 px-3 py-2">
+                                                <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">User ID</div>
+                                                <div className="mt-1 break-all text-slate-700">{entry.user_id}</div>
                                             </div>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         )}
-                    </PanelCard>
+                            </PanelCard>
+                        ) : null}
 
-                    <PanelCard title="Activity Logging" description="Recent tracked actions across the system.">
+                        {activeAdminSection === 'activity-logs' ? (
+                            <PanelCard title="Activity Logging" description="Recent tracked actions across the system.">
                         {activityLogs.length === 0 ? <EmptyState title="No activity logs captured yet." /> : (
-                            <div className="space-y-3">
+                            <div className="campus-scroll max-h-[40rem] space-y-3 overflow-y-auto pr-1">
                                 {activityLogs.map((entry) => (
-                                    <div key={entry.id} className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/75">
+                                    <div key={entry.id} className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                                         <div className="flex flex-wrap items-center justify-between gap-3">
-                                            <div className="font-semibold text-white">{entry.action}</div>
-                                            <div className="capitalize text-white/55">{entry.role || 'user'}</div>
+                                            <div className="font-semibold text-slate-900">{entry.action}</div>
+                                            <div className="capitalize text-slate-500">{entry.role || 'user'}</div>
                                         </div>
-                                        <div className="mt-2 text-white/60">{entry.summary || 'No summary provided.'}</div>
-                                        <div className="mt-1 text-white/45">{new Date(entry.created_at).toLocaleString()}</div>
+                                        <div className="mt-2 text-slate-500">{entry.summary || 'No summary provided.'}</div>
+                                        <div className="mt-1 text-slate-400">{new Date(entry.created_at).toLocaleString()}</div>
                                     </div>
                                 ))}
                             </div>
                         )}
-                    </PanelCard>
+                            </PanelCard>
+                        ) : null}
+                    </div>
                 </div>
 
-                <AdminSubjectAssignmentPanel teachers={teacherProfiles.map(t => ({ userId: t.user_id, name: t.display_name || t.full_name || t.email, email: t.email }))} />
-
-                <AdminStudentRegistrationPanel studentProfiles={studentProfiles.map(p => ({ userId: p.user_id, name: p.display_name || p.full_name || p.email, email: p.email, rollNumber: p.roll_number || '', course: p.course || '', branch: p.branch || '', semester: p.semester || null }))} />
-
                 {selectedRequest ? (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-8 backdrop-blur-sm">
-                        <div className="w-full max-w-3xl rounded-[2rem] border border-white/10 bg-slate-950 p-6 text-white shadow-2xl">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-800/70 px-4 py-8 backdrop-blur-sm">
+                        <div className="w-full max-w-3xl rounded-[2rem] border border-slate-200 bg-slate-800 p-6 text-slate-900 shadow-2xl">
                             <div className="flex items-start justify-between gap-4">
                                 <div>
                                     <div className="campus-kicker">Teacher Verification Review</div>
@@ -1669,13 +1588,13 @@ export function AdminDashboard({ displayName, profile, onSignOut }) {
                                 <button onClick={() => {
                                     setSelectedRequest(null);
                                     setReviewNotes('');
-                                }} className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70">
+                                }} className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600">
                                     Close
                                 </button>
                             </div>
                             <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.9fr]">
-                                <div className="rounded-[1.4rem] border border-white/10 bg-white/5 p-4">
-                                    <div className="text-sm text-white/55">Employee ID image</div>
+                                <div className="rounded-[1.4rem] border border-slate-200 bg-slate-50 p-4">
+                                    <div className="text-sm text-slate-500">Employee ID image</div>
                                     {selectedRequest.employee_id_image_data ? (
                                         <Image src={selectedRequest.employee_id_image_data} alt="Employee ID" width={1200} height={800} unoptimized className="mt-4 max-h-[26rem] w-full rounded-[1rem] object-contain" />
                                     ) : (
@@ -1683,8 +1602,8 @@ export function AdminDashboard({ displayName, profile, onSignOut }) {
                                     )}
                                 </div>
                                 <div className="space-y-4">
-                                    <div className="rounded-[1.2rem] border border-white/10 bg-white/5 px-4 py-4 text-sm text-white/75">
-                                        <div className="font-semibold text-white">{profileMap[selectedRequest.user_id]?.display_name || selectedRequest.full_name || 'Teacher'}</div>
+                                    <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
+                                        <div className="font-semibold text-slate-900">{profileMap[selectedRequest.user_id]?.display_name || selectedRequest.full_name || 'Teacher'}</div>
                                         <div className="mt-2">Email: {selectedRequest.email}</div>
                                         <div className="mt-1">Phone: {selectedRequest.phone_number || 'Not provided'}</div>
                                         <div className="mt-1">Employee ID: {selectedRequest.employee_id}</div>
@@ -1692,10 +1611,10 @@ export function AdminDashboard({ displayName, profile, onSignOut }) {
                                     </div>
                                     <textarea value={reviewNotes} onChange={(event) => setReviewNotes(event.target.value)} placeholder="Review notes for the teacher" className="campus-input min-h-36 w-full rounded-[1rem] px-4 py-3" />
                                     <div className="flex flex-wrap gap-3">
-                                        <button onClick={() => void handleReview('approve')} className="rounded-[1rem] bg-gradient-to-r from-cyan-500 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950">
+                                        <button onClick={() => void handleReview('approve')} className="rounded-[1rem] bg-gradient-to-r from-sky-500 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950">
                                             Approve teacher
                                         </button>
-                                        <button onClick={() => void handleReview('reject')} className="rounded-[1rem] border border-red-400/30 bg-red-500/10 px-5 py-3 text-sm font-medium text-red-100">
+                                        <button onClick={() => void handleReview('reject')} className="rounded-[1rem] border border-red-400/30 bg-red-500/10 px-5 py-3 text-sm font-medium text-red-600">
                                             Reject request
                                         </button>
                                     </div>

@@ -5,15 +5,15 @@ import { PLANNER_CATEGORIES, PLANNER_CATEGORY_MAP, MIN_PLANNER_LEAD_MINUTES, for
 
 function getKindBadgeClasses(kind) {
     if (kind === 'deadline') {
-        return 'border-amber-400/30 bg-amber-500/15 text-amber-100';
+        return 'border-amber-400/30 bg-amber-500/15 text-amber-700';
     }
     if (kind === 'reminder') {
-        return 'border-cyan-400/30 bg-cyan-500/15 text-cyan-100';
+        return 'border-sky-400/30 bg-sky-500/15 text-sky-700';
     }
     if (kind === 'planner') {
-        return 'border-emerald-400/30 bg-emerald-500/15 text-emerald-100';
+        return 'border-emerald-400/30 bg-emerald-500/15 text-emerald-700';
     }
-    return 'border-fuchsia-400/30 bg-fuchsia-500/15 text-fuchsia-100';
+    return 'border-fuchsia-400/30 bg-fuchsia-500/15 text-fuchsia-700';
 }
 
 function getRiskAccentClasses(item) {
@@ -23,7 +23,7 @@ function getRiskAccentClasses(item) {
     if (item.urgencyLabel === 'overlap' || item.score >= 95) {
         return 'border-amber-400/30 bg-amber-500/10';
     }
-    return 'border-white/10 bg-white/5';
+    return 'border-slate-200 bg-slate-50';
 }
 
 function PlannerSection({ title, description, emptyMessage, items, onSelectTab, onItemAction }) {
@@ -31,16 +31,16 @@ function PlannerSection({ title, description, emptyMessage, items, onSelectTab, 
         <div className="campus-panel rounded-[1.8rem] p-6">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
-                    <h3 className="text-xl font-bold text-white">{title}</h3>
-                    <p className="text-sm text-white/55">{description}</p>
+                    <h3 className="text-xl font-bold text-slate-900">{title}</h3>
+                    <p className="text-sm text-slate-600">{description}</p>
                 </div>
-                <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/55">
+                <div className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs uppercase tracking-[0.2em] text-slate-600">
                     {items.length} items
                 </div>
             </div>
 
             {items.length === 0 ? (
-                <div className="mt-5 rounded-[1.4rem] border border-dashed border-white/15 px-5 py-8 text-center text-white/50">
+                <div className="mt-5 rounded-[1.4rem] border border-dashed border-slate-300 bg-white px-5 py-8 text-center text-slate-500">
                     {emptyMessage}
                 </div>
             ) : (
@@ -53,19 +53,19 @@ function PlannerSection({ title, description, emptyMessage, items, onSelectTab, 
                                         <span className={`rounded-full border px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] ${getKindBadgeClasses(item.kind)}`}>
                                             {item.kind}
                                         </span>
-                                        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-white/55">
+                                        <span className="rounded-full border border-slate-300 bg-white px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-slate-600">
                                             {item.urgencyLabel}
                                         </span>
                                     </div>
-                                    <h4 className="mt-3 text-lg font-semibold text-white">{item.title}</h4>
-                                    <p className="mt-2 text-sm text-white/65">{item.subtitle}</p>
-                                    <div className="mt-3 text-sm text-white/75">{item.dueLabel}</div>
+                                    <h4 className="mt-3 text-lg font-semibold text-slate-900">{item.title}</h4>
+                                    <p className="mt-2 text-sm text-slate-600">{item.subtitle}</p>
+                                    <div className="mt-3 text-sm text-slate-700">{item.dueLabel}</div>
                                 </div>
                                 <div className="flex shrink-0 flex-wrap gap-3">
-                                    <button onClick={() => onItemAction(item)} className="rounded-[0.95rem] bg-gradient-to-r from-cyan-500 to-emerald-400 px-4 py-2.5 text-sm font-medium text-slate-950">
+                                    <button onClick={() => onItemAction(item)} className="rounded-[0.95rem] bg-gradient-to-r from-sky-500 to-emerald-400 px-4 py-2.5 text-sm font-medium text-slate-950">
                                         {item.primaryActionLabel}
                                     </button>
-                                    <button onClick={() => onSelectTab(item.tabTarget)} className="rounded-[0.95rem] border border-white/10 bg-white/10 px-4 py-2.5 text-sm text-white">
+                                    <button onClick={() => onSelectTab(item.tabTarget)} className="rounded-[0.95rem] border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-900">
                                         Open {item.tabTarget}
                                     </button>
                                 </div>
@@ -84,26 +84,26 @@ function PlannerComposer({ draft, isEditing, validationError, onChange, onClose,
     const minimumEndTime = draft.startTime || minimumStartTime;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-8 backdrop-blur-sm">
-            <div className="w-full max-w-2xl rounded-[2rem] border border-white/10 bg-slate-950 p-6 text-white shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-800/70 px-4 py-8 backdrop-blur-sm">
+            <div className="w-full max-w-2xl rounded-[2rem] border border-slate-200 bg-white p-6 text-slate-900 shadow-2xl">
                 <div className="flex items-start justify-between gap-4">
                     <div>
                         <div className="campus-kicker">Weekly Planner Block</div>
                         <h3 className="mt-2 text-2xl font-bold">{isEditing ? 'Edit planner block' : 'Create planner block'}</h3>
-                        <p className="mt-2 text-sm text-white/60">Save study, class, meeting, and personal blocks directly into your weekly planner.</p>
+                        <p className="mt-2 text-sm text-slate-600">Save study, class, meeting, and personal blocks directly into your weekly planner.</p>
                     </div>
-                    <button onClick={onClose} className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70">
+                    <button onClick={onClose} className="rounded-full border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700">
                         Close
                     </button>
                 </div>
 
                 <div className="mt-6 grid gap-4 md:grid-cols-2">
                     <label className="space-y-2">
-                        <div className="text-sm text-white/65">Title</div>
+                        <div className="text-sm text-slate-700">Title</div>
                         <input value={draft.title} onChange={(event) => onChange('title', event.target.value)} className="campus-input w-full rounded-[1rem] px-4 py-3" placeholder="Deep work for DBMS" />
                     </label>
                     <label className="space-y-2">
-                        <div className="text-sm text-white/65">Category</div>
+                        <div className="text-sm text-slate-700">Category</div>
                         <select value={draft.category} onChange={(event) => onChange('category', event.target.value)} className="campus-input w-full rounded-[1rem] px-4 py-3">
                             {PLANNER_CATEGORIES.map((category) => (
                                 <option key={category.id} value={category.id}>
@@ -113,49 +113,49 @@ function PlannerComposer({ draft, isEditing, validationError, onChange, onClose,
                         </select>
                     </label>
                     <label className="space-y-2">
-                        <div className="text-sm text-white/65">Date</div>
+                        <div className="text-sm text-slate-700">Date</div>
                         <input type="date" min={todayKey} value={draft.date} onChange={(event) => onChange('date', event.target.value)} className="campus-input w-full rounded-[1rem] px-4 py-3" />
                     </label>
                     <label className="space-y-2">
-                        <div className="text-sm text-white/65">Repeats</div>
+                        <div className="text-sm text-slate-700">Repeats</div>
                         <select value={draft.recurrence} onChange={(event) => onChange('recurrence', event.target.value)} className="campus-input w-full rounded-[1rem] px-4 py-3">
                             <option value="none">Does not repeat</option>
                             <option value="weekly">Repeats weekly</option>
                         </select>
                     </label>
                     <label className="space-y-2">
-                        <div className="text-sm text-white/65">Start time</div>
+                        <div className="text-sm text-slate-700">Start time</div>
                         <input type="time" min={minimumStartTime || undefined} value={draft.startTime} onChange={(event) => onChange('startTime', event.target.value)} className="campus-input w-full rounded-[1rem] px-4 py-3" />
                     </label>
                     <label className="space-y-2">
-                        <div className="text-sm text-white/65">End time</div>
+                        <div className="text-sm text-slate-700">End time</div>
                         <input type="time" min={minimumEndTime || undefined} value={draft.endTime} onChange={(event) => onChange('endTime', event.target.value)} className="campus-input w-full rounded-[1rem] px-4 py-3" />
                     </label>
                 </div>
 
                 <label className="mt-4 block space-y-2">
-                    <div className="text-sm text-white/65">Notes</div>
+                    <div className="text-sm text-slate-700">Notes</div>
                     <textarea value={draft.notes} onChange={(event) => onChange('notes', event.target.value)} className="campus-input min-h-28 w-full rounded-[1rem] px-4 py-3" placeholder="What should happen in this block?" />
                 </label>
 
                 {validationError ? (
-                    <div className="mt-4 rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+                    <div className="mt-4 rounded-[1rem] border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">
                         {validationError}
                     </div>
                 ) : draft.date === todayKey ? (
-                    <div className="mt-4 rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/60">
+                    <div className="mt-4 rounded-[1rem] border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600">
                         Today&apos;s blocks must start at least {MIN_PLANNER_LEAD_MINUTES} minutes from the current time.
                     </div>
                 ) : null}
 
                 <div className="mt-6 flex flex-wrap gap-3">
-                    <button onClick={onSave} disabled={Boolean(validationError)} className="rounded-[1rem] bg-gradient-to-r from-cyan-500 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50">
+                    <button onClick={onSave} disabled={Boolean(validationError)} className="rounded-[1rem] bg-gradient-to-r from-sky-500 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50">
                         Save block
                     </button>
-                    <button onClick={onClose} className="rounded-[1rem] border border-white/10 bg-white/5 px-5 py-3 text-sm text-white">
+                    <button onClick={onClose} className="rounded-[1rem] border border-slate-300 bg-white px-5 py-3 text-sm text-slate-900">
                         Cancel
                     </button>
-                    <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/60">
+                    <div className="rounded-[1rem] border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                         Time range: {formatPlannerRange(draft.startTime, draft.endTime)}
                     </div>
                 </div>
@@ -166,27 +166,27 @@ function PlannerComposer({ draft, isEditing, validationError, onChange, onClose,
 
 function DayColumn({ day, onCreate, onEdit, onDelete, onToggle, onOpenSource }) {
     return (
-        <div className={`rounded-[1.5rem] border p-4 ${day.isToday ? 'border-cyan-400/35 bg-cyan-500/10' : 'border-white/10 bg-white/5'}`}>
+        <div className={`rounded-[1.5rem] border p-4 ${day.isToday ? 'border-sky-300 bg-sky-50' : 'border-slate-200 bg-white'}`}>
             <div className="flex items-start justify-between gap-3">
                 <div>
-                    <div className="text-sm font-semibold text-white">{day.dayLabel}</div>
-                    <div className="text-xs uppercase tracking-[0.2em] text-white/45">{day.dateLabel}</div>
+                    <div className="text-sm font-semibold text-slate-900">{day.dayLabel}</div>
+                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500">{day.dateLabel}</div>
                 </div>
-                <button onClick={() => onCreate(day.dateKey)} disabled={day.isPast} className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs text-white/70 disabled:cursor-not-allowed disabled:opacity-40">
+                <button onClick={() => onCreate(day.dateKey)} disabled={day.isPast} className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:opacity-40">
                     + Add
                 </button>
             </div>
 
             <div className="mt-4 space-y-3">
                 {day.items.length === 0 ? (
-                    <div className="rounded-[1rem] border border-dashed border-white/10 px-3 py-5 text-center text-xs text-white/40">
+                    <div className="rounded-[1rem] border border-dashed border-slate-300 bg-slate-50 px-3 py-5 text-center text-xs text-slate-500">
                         Free day space
                     </div>
                 ) : (
                     day.items.map((item) => {
                         const categoryMeta = PLANNER_CATEGORY_MAP[item.category] || PLANNER_CATEGORY_MAP.study;
                         return (
-                            <div key={item.id} className={`rounded-[1rem] border p-3 ${item.isConflicting ? 'border-amber-400/30 bg-amber-500/10' : 'border-white/10 bg-slate-950/45'} ${item.completed ? 'opacity-60' : ''}`}>
+                            <div key={item.id} className={`rounded-[1rem] border p-3 ${item.isConflicting ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-slate-50'} ${item.completed ? 'opacity-60' : ''}`}>
                                 <div className="flex flex-wrap items-center gap-2">
                                     <span className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] ${categoryMeta.badgeClassName}`}>
                                         {categoryMeta.label}
@@ -195,25 +195,25 @@ function DayColumn({ day, onCreate, onEdit, onDelete, onToggle, onOpenSource }) 
                                         {item.kind}
                                     </span>
                                 </div>
-                                <div className="mt-3 text-sm font-semibold text-white">{item.title}</div>
-                                <div className="mt-1 text-xs text-white/55">{item.timeLabel}</div>
-                                <div className="mt-2 text-xs leading-5 text-white/65">{item.subtitle}</div>
-                                {item.isConflicting ? <div className="mt-2 text-[11px] uppercase tracking-[0.18em] text-amber-200">Schedule overlap</div> : null}
+                                <div className="mt-3 text-sm font-semibold text-slate-900">{item.title}</div>
+                                <div className="mt-1 text-xs text-slate-600">{item.timeLabel}</div>
+                                <div className="mt-2 text-xs leading-5 text-slate-600">{item.subtitle}</div>
+                                {item.isConflicting ? <div className="mt-2 text-[11px] uppercase tracking-[0.18em] text-amber-700">Schedule overlap</div> : null}
                                 <div className="mt-3 flex flex-wrap gap-2">
                                     {item.editable ? (
                                         <>
-                                            <button onClick={() => onToggle(item.sourceId)} className="rounded-lg bg-emerald-500/20 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-emerald-100">
+                                            <button onClick={() => onToggle(item.sourceId)} className="rounded-lg bg-emerald-500/20 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-emerald-700">
                                                 {item.completed ? 'Reopen' : 'Done'}
                                             </button>
-                                            <button onClick={() => onEdit(item)} className="rounded-lg bg-white/10 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-white">
+                                            <button onClick={() => onEdit(item)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-900">
                                                 Edit
                                             </button>
-                                            <button onClick={() => onDelete(item.sourceId)} className="rounded-lg bg-red-500/15 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-red-100">
+                                            <button onClick={() => onDelete(item.sourceId)} className="rounded-lg bg-red-500/15 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-red-600">
                                                 Delete
                                             </button>
                                         </>
                                     ) : (
-                                        <button onClick={() => onOpenSource(item.sourceType)} className="rounded-lg bg-white/10 px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-white">
+                                        <button onClick={() => onOpenSource(item.sourceType)} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-900">
                                             Open source
                                         </button>
                                     )}
@@ -321,49 +321,49 @@ export function SmartPlannerTab({
                 <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
                     <div className="max-w-3xl">
                         <div className="campus-kicker">Smart Weekly Planner</div>
-                        <h2 className="mt-2 text-3xl font-bold text-white">One plan, not five separate lists</h2>
-                        <p className="mt-3 text-sm leading-7 text-white/65">
+                        <h2 className="mt-2 text-3xl font-bold text-slate-900">One plan, not five separate lists</h2>
+                        <p className="mt-3 text-sm leading-7 text-slate-600">
                             This planner combines deadlines, reminders, events, attention patterns, and your own saved blocks into a weekly calendar you can actually act on.
                         </p>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-3 xl:w-[28rem]">
                         <div className="rounded-[1.4rem] border border-amber-400/25 bg-amber-500/10 p-4">
-                            <div className="text-xs uppercase tracking-[0.2em] text-amber-200/70">Open deadlines</div>
-                            <div className="mt-3 text-3xl font-bold text-white">{openDeadlinesCount}</div>
+                            <div className="text-xs uppercase tracking-[0.2em] text-amber-700/70">Open deadlines</div>
+                            <div className="mt-3 text-3xl font-bold text-slate-900">{openDeadlinesCount}</div>
                         </div>
-                        <div className="rounded-[1.4rem] border border-cyan-400/25 bg-cyan-500/10 p-4">
-                            <div className="text-xs uppercase tracking-[0.2em] text-cyan-200/70">Upcoming reminders</div>
-                            <div className="mt-3 text-3xl font-bold text-white">{upcomingRemindersCount}</div>
+                        <div className="rounded-[1.4rem] border border-sky-400/25 bg-sky-500/10 p-4">
+                            <div className="text-xs uppercase tracking-[0.2em] text-sky-700/70">Upcoming reminders</div>
+                            <div className="mt-3 text-3xl font-bold text-slate-900">{upcomingRemindersCount}</div>
                         </div>
                         <div className="rounded-[1.4rem] border border-emerald-400/25 bg-emerald-500/10 p-4">
-                            <div className="text-xs uppercase tracking-[0.2em] text-emerald-200/70">Focus ratio</div>
-                            <div className="mt-3 text-3xl font-bold text-white">{Math.round(focusRatio * 100)}%</div>
+                            <div className="text-xs uppercase tracking-[0.2em] text-emerald-700/70">Focus ratio</div>
+                            <div className="mt-3 text-3xl font-bold text-slate-900">{Math.round(focusRatio * 100)}%</div>
                         </div>
                     </div>
                 </div>
 
                 <div className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-                    <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
-                        <div className="text-xs uppercase tracking-[0.2em] text-white/45">Planner guidance</div>
+                    <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Planner guidance</div>
                         <div className="mt-4 space-y-3">
                             {guidance.map((line, index) => (
-                                <div key={`planner-guidance-${index}`} className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/80">
+                                <div key={`planner-guidance-${index}`} className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                                     {line}
                                 </div>
                             ))}
                         </div>
                     </div>
-                    <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
-                        <div className="text-xs uppercase tracking-[0.2em] text-white/45">Behavior snapshot</div>
-                        <div className="mt-4 space-y-3 text-sm text-white/75">
-                            <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">
-                                Attention state: <span className="font-semibold text-white">{attentionLevel}</span>
+                    <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
+                        <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Behavior snapshot</div>
+                        <div className="mt-4 space-y-3 text-sm text-slate-600">
+                            <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                                Attention state: <span className="font-semibold text-slate-900">{attentionLevel}</span>
                             </div>
-                            <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">
-                                High risk queue: <span className="font-semibold text-white">{highRiskItems.length} items</span>
+                            <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                                High risk queue: <span className="font-semibold text-slate-900">{highRiskItems.length} items</span>
                             </div>
-                            <div className="rounded-[1rem] border border-white/10 bg-white/5 px-4 py-3">
-                                Events already attended: <span className="font-semibold text-white">{attendedEventsCount}</span>
+                            <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                                Events already attended: <span className="font-semibold text-slate-900">{attendedEventsCount}</span>
                             </div>
                         </div>
                     </div>
@@ -374,32 +374,32 @@ export function SmartPlannerTab({
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                         <div className="campus-kicker">Weekly Calendar</div>
-                        <h3 className="mt-2 text-2xl font-bold text-white">{plannerWeekData.weekLabel}</h3>
-                        <p className="mt-2 max-w-3xl text-sm text-white/60">
+                        <h3 className="mt-2 text-2xl font-bold text-slate-900">{plannerWeekData.weekLabel}</h3>
+                        <p className="mt-2 max-w-3xl text-sm text-slate-600">
                             Your manual blocks sit alongside imported deadlines, reminders, and events so you can spot pressure before the week gets messy.
                         </p>
                     </div>
-                    <button onClick={() => openNewComposer(defaultComposerDate)} className="rounded-[1rem] bg-gradient-to-r from-cyan-500 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950">
+                    <button onClick={() => openNewComposer(defaultComposerDate)} className="rounded-[1rem] bg-gradient-to-r from-sky-500 to-emerald-400 px-5 py-3 text-sm font-semibold text-slate-950">
                         Add planner block
                     </button>
                 </div>
 
                 <div className="mt-6 grid gap-4 md:grid-cols-4">
-                    <div className="rounded-[1.3rem] border border-white/10 bg-white/5 p-4">
-                        <div className="text-xs uppercase tracking-[0.18em] text-white/45">Scheduled hours</div>
-                        <div className="mt-3 text-3xl font-bold text-white">{plannerWeekData.stats.totalScheduledHours}</div>
+                    <div className="rounded-[1.3rem] border border-slate-200 bg-slate-50 p-4">
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Scheduled hours</div>
+                        <div className="mt-3 text-3xl font-bold text-slate-900">{plannerWeekData.stats.totalScheduledHours}</div>
                     </div>
-                    <div className="rounded-[1.3rem] border border-white/10 bg-white/5 p-4">
-                        <div className="text-xs uppercase tracking-[0.18em] text-white/45">Your blocks</div>
-                        <div className="mt-3 text-3xl font-bold text-white">{plannerWeekData.stats.plannerCount}</div>
+                    <div className="rounded-[1.3rem] border border-slate-200 bg-slate-50 p-4">
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Your blocks</div>
+                        <div className="mt-3 text-3xl font-bold text-slate-900">{plannerWeekData.stats.plannerCount}</div>
                     </div>
-                    <div className="rounded-[1.3rem] border border-white/10 bg-white/5 p-4">
-                        <div className="text-xs uppercase tracking-[0.18em] text-white/45">Busiest day</div>
-                        <div className="mt-3 text-lg font-bold text-white">{plannerWeekData.stats.busyDayLabel}</div>
+                    <div className="rounded-[1.3rem] border border-slate-200 bg-slate-50 p-4">
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Busiest day</div>
+                        <div className="mt-3 text-lg font-bold text-slate-900">{plannerWeekData.stats.busyDayLabel}</div>
                     </div>
-                    <div className="rounded-[1.3rem] border border-white/10 bg-white/5 p-4">
-                        <div className="text-xs uppercase tracking-[0.18em] text-white/45">Conflicts</div>
-                        <div className="mt-3 text-3xl font-bold text-white">{plannerWeekData.stats.conflictCount}</div>
+                    <div className="rounded-[1.3rem] border border-slate-200 bg-slate-50 p-4">
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Conflicts</div>
+                        <div className="mt-3 text-3xl font-bold text-slate-900">{plannerWeekData.stats.conflictCount}</div>
                     </div>
                 </div>
 
@@ -418,8 +418,8 @@ export function SmartPlannerTab({
                 </div>
 
                 <div className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-                    <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
-                        <div className="text-xs uppercase tracking-[0.18em] text-white/45">Legend</div>
+                    <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Legend</div>
                         <div className="mt-4 flex flex-wrap gap-2">
                             {PLANNER_CATEGORIES.map((category) => (
                                 <span key={category.id} className={`rounded-full border px-3 py-2 text-xs uppercase tracking-[0.18em] ${category.badgeClassName}`}>
@@ -428,16 +428,16 @@ export function SmartPlannerTab({
                             ))}
                         </div>
                     </div>
-                    <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
-                        <div className="text-xs uppercase tracking-[0.18em] text-white/45">Conflict watch</div>
+                    <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
+                        <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Conflict watch</div>
                         <div className="mt-4 space-y-3">
                             {plannerWeekData.conflicts.length === 0 ? (
-                                <div className="rounded-[1rem] border border-dashed border-white/10 px-4 py-5 text-sm text-white/55">
+                                <div className="rounded-[1rem] border border-dashed border-slate-300 bg-white px-4 py-5 text-sm text-slate-600">
                                     No overlaps right now. Your weekly plan is structurally clean.
                                 </div>
                             ) : (
                                 plannerWeekData.conflicts.map((conflict) => (
-                                    <div key={conflict.id} className="rounded-[1rem] border border-amber-400/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                                    <div key={conflict.id} className="rounded-[1rem] border border-amber-400/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-700">
                                         {conflict.date}: {conflict.title}
                                     </div>
                                 ))

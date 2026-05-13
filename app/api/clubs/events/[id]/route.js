@@ -48,7 +48,7 @@ export async function PUT(request, { params }) {
     }
 
     const body = await request.json();
-    const { title, description, proposed_date, time_start, time_end, venue, expected_participants } = body;
+    const { title, description, proposed_date, time_start, time_end, venue, expected_participants, registration_starts, event_end_date } = body;
 
     const { data: updated, error } = await supabase
       .from('events')
@@ -63,6 +63,8 @@ export async function PUT(request, { params }) {
         status: 'PENDING_COORDINATOR_APPROVAL',
         rejection_reason: null,
         version: existing.version + 1,
+        registration_starts: registration_starts || null,
+        event_end_date: event_end_date || proposed_date,
       })
       .eq('id', id)
       .select()

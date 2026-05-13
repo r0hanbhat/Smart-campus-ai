@@ -6,9 +6,9 @@ import { createClient } from '@/lib/supabase/client';
 const POSITION_HOLDERS = ['President', 'Vice President', 'Secretary', 'Treasurer'];
 const GROUP_ICONS = { announcement: '📢', official: '🏛️', unofficial: '💬' };
 const GROUP_COLORS = {
-  announcement: 'border-amber-400/30 bg-amber-500/10 text-amber-200',
-  official: 'border-cyan-400/30 bg-cyan-500/10 text-cyan-200',
-  unofficial: 'border-purple-400/30 bg-purple-500/10 text-purple-200',
+  announcement: 'border-amber-400/30 bg-amber-500/10 text-amber-700',
+  official: 'border-sky-400/30 bg-sky-500/10 text-sky-700',
+  unofficial: 'border-purple-400/30 bg-purple-500/10 text-purple-700',
 };
 
 function AcknowledgeButton({ message, onAcknowledge }) {
@@ -42,8 +42,8 @@ function AcknowledgeButton({ message, onAcknowledge }) {
         disabled={localAcked || loading}
         className={`flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
           localAcked
-            ? 'bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 cursor-default'
-            : 'bg-amber-500/15 border border-amber-400/30 text-amber-200 hover:bg-amber-500/25'
+            ? 'bg-emerald-500/20 border border-emerald-400/30 text-emerald-700 cursor-default'
+            : 'bg-amber-500/15 border border-amber-400/30 text-amber-700 hover:bg-amber-500/25'
         }`}
       >
         {localAcked ? '✓ Acknowledged' : loading ? 'Acknowledging…' : 'Acknowledge'}
@@ -77,42 +77,42 @@ function AckTally({ messageId, initialCount }) {
     <>
       <button
         onClick={() => { void fetchDetail(); setShowModal(true); }}
-        className="text-xs text-white/50 hover:text-white/80 transition underline underline-offset-2"
+        className="text-xs text-slate-400 hover:text-slate-700 transition underline underline-offset-2"
       >
         {count} / {total || '?'} Acknowledged
       </button>
       {showModal && detail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-[1.8rem] border border-white/10 bg-slate-950 p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-800/70 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-[1.8rem] border border-slate-200 bg-slate-800 p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-white">Acknowledgment Status</h3>
-              <button onClick={() => setShowModal(false)} className="text-white/50 hover:text-white">✕</button>
+              <h3 className="text-lg font-bold text-slate-900">Acknowledgment Status</h3>
+              <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-900">✕</button>
             </div>
             <div className="flex gap-2 mb-4">
-              <span className="rounded-full bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 text-xs text-emerald-300">
+              <span className="rounded-full bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 text-xs text-emerald-700">
                 ✓ Acknowledged: {detail.acknowledged?.length ?? 0}
               </span>
-              <span className="rounded-full bg-red-500/15 border border-red-400/25 px-3 py-1 text-xs text-red-300">
+              <span className="rounded-full bg-red-500/15 border border-red-400/25 px-3 py-1 text-xs text-red-600">
                 Pending: {detail.pending?.length ?? 0}
               </span>
             </div>
             <div className="grid gap-4 md:grid-cols-2 max-h-72 overflow-y-auto">
               <div>
-                <div className="text-xs uppercase tracking-widest text-white/40 mb-2">Acknowledged</div>
+                <div className="text-xs uppercase tracking-widest text-slate-400 mb-2">Acknowledged</div>
                 {(detail.acknowledged || []).length === 0
-                  ? <div className="text-sm text-white/40">None yet</div>
+                  ? <div className="text-sm text-slate-400">None yet</div>
                   : (detail.acknowledged || []).map(a => (
-                    <div key={a.user_id} className="text-sm text-white/75 py-1 border-b border-white/5">
+                    <div key={a.user_id} className="text-sm text-slate-600 py-1 border-b border-white/5">
                       {a.user?.display_name || a.user?.full_name || 'Teacher'}
                     </div>
                   ))}
               </div>
               <div>
-                <div className="text-xs uppercase tracking-widest text-white/40 mb-2">Pending</div>
+                <div className="text-xs uppercase tracking-widest text-slate-400 mb-2">Pending</div>
                 {(detail.pending || []).length === 0
                   ? <div className="text-sm text-emerald-400">Everyone acknowledged!</div>
                   : (detail.pending || []).map(m => (
-                    <div key={m.user_id} className="text-sm text-white/75 py-1 border-b border-white/5">
+                    <div key={m.user_id} className="text-sm text-slate-600 py-1 border-b border-white/5">
                       {m.display_name || m.full_name || 'Teacher'}
                     </div>
                   ))}
@@ -131,18 +131,18 @@ function MessageBubble({ msg, isOwn, isAnnouncement }) {
   return (
     <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-3`}>
       <div className={`max-w-[78%] rounded-[1.4rem] px-4 py-3 shadow-lg ${
-        isOwn ? 'campus-button text-white' : 'campus-soft-card text-white'
+        isOwn ? 'campus-button text-slate-900' : 'campus-soft-card text-slate-900'
       }`}>
         {!isOwn && (
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-semibold text-cyan-300">{senderName}</span>
+            <span className="text-xs font-semibold text-sky-600">{senderName}</span>
             {position && (
-              <span className="rounded-full bg-amber-500/20 border border-amber-400/30 px-2 py-0.5 text-[10px] text-amber-200">{position}</span>
+              <span className="rounded-full bg-amber-500/20 border border-amber-400/30 px-2 py-0.5 text-[10px] text-amber-700">{position}</span>
             )}
           </div>
         )}
         <p className="text-sm leading-6 whitespace-pre-wrap">{msg.content}</p>
-        <div className="mt-1 text-[10px] text-white/40">
+        <div className="mt-1 text-[10px] text-slate-400">
           {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           {msg.updated_at && ' (edited)'}
         </div>
@@ -253,8 +253,8 @@ export default function JcufaChatPanel({ userId, userProfile }) {
     return (
       <div className="campus-panel rounded-[1.7rem] p-8 text-center">
         <div className="text-4xl mb-3">🏛️</div>
-        <h3 className="text-xl font-bold text-white">JCUFA Portal</h3>
-        <p className="mt-2 text-sm text-white/55">Your account is not currently assigned a JCUFA position. Contact the Admin to be added to the faculty association.</p>
+        <h3 className="text-xl font-bold text-slate-900">JCUFA Portal</h3>
+        <p className="mt-2 text-sm text-slate-500">Your account is not currently assigned a JCUFA position. Contact the Admin to be added to the faculty association.</p>
       </div>
     );
   }
@@ -262,13 +262,13 @@ export default function JcufaChatPanel({ userId, userProfile }) {
   return (
     <div className="campus-panel rounded-[1.7rem] overflow-hidden">
       {/* Header */}
-      <div className="border-b border-white/10 px-6 py-5">
+      <div className="border-b border-slate-200 px-6 py-5">
         <div className="campus-kicker">Faculty Association</div>
-        <h2 className="mt-2 text-2xl font-bold text-white">JCUFA Portal</h2>
+        <h2 className="mt-2 text-2xl font-bold text-slate-900">JCUFA Portal</h2>
         <div className="mt-1 flex items-center gap-2">
-          <span className="text-sm text-white/55">Signed in as {userProfile.display_name || userProfile.full_name}</span>
+          <span className="text-sm text-slate-500">Signed in as {userProfile.display_name || userProfile.full_name}</span>
           {userProfile.jcufa_position && (
-            <span className="rounded-full bg-amber-500/20 border border-amber-400/30 px-2.5 py-0.5 text-xs text-amber-200">
+            <span className="rounded-full bg-amber-500/20 border border-amber-400/30 px-2.5 py-0.5 text-xs text-amber-700">
               {userProfile.jcufa_position}
             </span>
           )}
@@ -276,21 +276,21 @@ export default function JcufaChatPanel({ userId, userProfile }) {
       </div>
 
       {/* Group tabs */}
-      <div className="flex gap-2 border-b border-white/10 px-4 py-3 overflow-x-auto">
+      <div className="flex gap-2 border-b border-slate-200 px-4 py-3 overflow-x-auto">
         {groups.map(g => (
           <button
             key={g.id}
             onClick={() => setActiveGroupId(g.id)}
             className={`flex shrink-0 items-center gap-2 rounded-[1rem] px-4 py-2.5 text-sm font-medium transition ${
               activeGroupId === g.id
-                ? `campus-button text-white`
-                : 'bg-white/5 text-white/65 hover:bg-white/10 hover:text-white'
+                ? `campus-button text-slate-900`
+                : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
             <span>{GROUP_ICONS[g.type]}</span>
             <span>{g.name}</span>
             {g.type === 'announcement' && (
-              <span className="rounded-full bg-amber-500/25 px-1.5 py-0.5 text-[10px] text-amber-200">Official</span>
+              <span className="rounded-full bg-amber-500/25 px-1.5 py-0.5 text-[10px] text-amber-700">Official</span>
             )}
           </button>
         ))}
@@ -311,9 +311,9 @@ export default function JcufaChatPanel({ userId, userProfile }) {
       <div className="flex flex-col" style={{ height: '55vh' }}>
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-1 campus-scroll">
           {loadingMessages ? (
-            <div className="flex justify-center py-8 text-white/45 text-sm">Loading messages…</div>
+            <div className="flex justify-center py-8 text-slate-400 text-sm">Loading messages…</div>
           ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-white/35 text-sm gap-2">
+            <div className="flex flex-col items-center justify-center h-full text-slate-400 text-sm gap-2">
               <span className="text-3xl">{GROUP_ICONS[activeGroup?.type] || '💬'}</span>
               <span>No messages yet. Start the conversation.</span>
             </div>
@@ -331,9 +331,9 @@ export default function JcufaChatPanel({ userId, userProfile }) {
         </div>
 
         {/* Input area */}
-        <div className="border-t border-white/10 bg-black/20 px-4 py-3 backdrop-blur-md">
+        <div className="border-t border-slate-200 bg-black/20 px-4 py-3 backdrop-blur-md">
           {error && (
-            <div className="mb-2 rounded-[0.8rem] border border-red-400/25 bg-red-500/10 px-3 py-2 text-xs text-red-200">{error}</div>
+            <div className="mb-2 rounded-[0.8rem] border border-red-400/25 bg-red-500/10 px-3 py-2 text-xs text-red-600">{error}</div>
           )}
           {canSend ? (
             <div className="flex gap-3">
@@ -354,13 +354,13 @@ export default function JcufaChatPanel({ userId, userProfile }) {
               <button
                 onClick={handleSend}
                 disabled={sending || !input.trim()}
-                className="campus-button rounded-[1rem] px-6 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                className="campus-button rounded-[1rem] px-6 py-3 text-sm font-semibold text-slate-900 disabled:opacity-50"
               >
                 {sending ? '…' : 'Send'}
               </button>
             </div>
           ) : (
-            <div className="rounded-[1rem] border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200/80 text-center">
+            <div className="rounded-[1rem] border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-700/80 text-center">
               Only JCUFA position holders (President, Vice President, Secretary, Treasurer) can post in the Announcements group.
             </div>
           )}
