@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { TAB_LABELS } from '@/lib/smart-campus/constants';
 import { formatDuration } from '@/lib/smart-campus/utils';
 
@@ -36,16 +36,15 @@ export function DashboardOverviewTab({ events = [], clubs = [], reminders = [], 
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [recentQueries, setRecentQueries] = useState([]);
-
-    // Load recent AI queries from per-student localStorage key
-    useEffect(() => {
-        if (typeof window === 'undefined' || !userId) return;
+    const recentQueries = useMemo(() => {
+        if (typeof window === 'undefined' || !userId) {
+            return [];
+        }
         try {
             const raw = window.localStorage.getItem(`sc-recent-ai-queries-${userId}`);
-            setRecentQueries(raw ? JSON.parse(raw) : []);
+            return raw ? JSON.parse(raw) : [];
         } catch {
-            setRecentQueries([]);
+            return [];
         }
     }, [userId]);
     const [now, setNow] = useState(() => Date.now());

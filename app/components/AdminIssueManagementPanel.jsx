@@ -197,23 +197,11 @@ export default function AdminIssueManagementPanel() {
             setLoading(false);
             return;
         }
-        setIssues(Array.isArray(payload.issues) ? payload.issues : []);
+        const nextIssues = Array.isArray(payload.issues) ? payload.issues : [];
+        setIssues(nextIssues);
         setAnalytics(payload.analytics || { total: 0, open: 0, critical: 0, breached: 0, averageSatisfaction: 0, byCategory: [] });
-        setLoading(false);
-    }, [filters]);
-
-    useEffect(() => {
-        const timeoutId = window.setTimeout(() => {
-            void fetchIssues();
-        }, 0);
-        return () => window.clearTimeout(timeoutId);
-    }, [fetchIssues]);
-
-    // Sync the actionForm when an issue auto-selects on load (no manual click).
-    // Without this, the form defaults to 'triaged' and saving silently advances status.
-    useEffect(() => {
-        if (!selectedIssueId && issues.length > 0) {
-            const first = issues[0];
+        if (!selectedIssueId && nextIssues.length > 0) {
+            const first = nextIssues[0];
             setActionForm({
                 status: first.status || 'triaged',
                 department: first.department || '',
@@ -221,7 +209,15 @@ export default function AdminIssueManagementPanel() {
                 resolutionSummary: first.resolutionSummary || '',
             });
         }
-    }, [issues, selectedIssueId]);
+        setLoading(false);
+    }, [filters, selectedIssueId]);
+
+    useEffect(() => {
+        const timeoutId = window.setTimeout(() => {
+            void fetchIssues();
+        }, 0);
+        return () => window.clearTimeout(timeoutId);
+    }, [fetchIssues]);
 
     const issueKeys = useMemo(() => issues.map((issue) => `${issue.reporter.userId}::${issue.id}`), [issues]);
     const resolvedSelectedIssueId = selectedIssueId || issues[0]?.id || '';
@@ -300,9 +296,18 @@ export default function AdminIssueManagementPanel() {
                     afterEvidenceWithUrls = (uploaded || []).map(({ id, name, mimeType, url }) => ({
                         id, type: 'image', name, mimeType, url, dataUrl: '',
                     }));
+                    if (afterEvidenceWithUrls.some((item) => !item.url)) {
+                        setError('One or more after photos could not be uploaded. Please try again.');
+                        return;
+                    }
+                }
+                else {
+                    setError('After-photo upload failed. Please try again.');
+                    return;
                 }
             } catch {
-                setError('After-photo upload failed, but the status update will still be saved.');
+                setError('After-photo upload failed. Please try again.');
+                return;
             }
         }
 

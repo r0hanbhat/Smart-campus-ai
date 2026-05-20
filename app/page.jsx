@@ -23,7 +23,7 @@ import { createSupabaseAuthHeaders } from '@/lib/supabase/auth-fetch.js';
 export default function Home() {
     const { user, loading: authLoading, signOut } = useAuth();
     const [supabase] = useState(() => createClient());
-    const [activeTab, setActiveTab] = useState('chat');
+    const [activeTab, setActiveTab] = useState('dashboard');
     const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
     const [chatMode, setChatMode] = useState('assistant');
     const [clubEventsTab, setClubEventsTab] = useState('open'); // 'open' | 'live'
@@ -1757,7 +1757,7 @@ export default function Home() {
               </div>)}
           </div>)}
 
-        {activeTab === 'dashboard' && (<DashboardOverviewTab attentionLevel={attentionLevel} attentionReport={attentionReport} attentionScore={attentionScore} averageFocusPerVisitMs={averageFocusPerVisitMs} focusRatio={focusRatio} mostFocusedTab={mostFocusedTab} tabAttentionBreakdown={tabAttentionBreakdown} totalBackgroundMs={totalBackgroundMs} totalFocusedMs={totalFocusedMs} totalVisits={totalVisits} visibleInsights={visibleInsights}/>)}
+        {activeTab === 'dashboard' && (<DashboardOverviewTab attendedEventsCount={attendedEventsCount} clubs={clubs} deadlines={deadlines} events={events} joinedClubsCount={joinedClubsCount} openDeadlinesCount={openDeadlinesCount} reminders={reminders} upcomingRemindersCount={upcomingRemindersCount} userId={user.id} />)}
 
         {activeTab === 'profile' && (<ProfileTab attendedEventsCount={attendedEventsCount} attentionLevel={attentionLevel} branch={profileBranch} course={profileCourse} displayName={displayName} focusRatio={focusRatio} fullName={fullName} isOnline={userProfile?.is_online ?? false} isSavingProfile={profileUpdateLoading} joinedClubsCount={joinedClubsCount} lastSeenLabel={lastSeenLabel} mostFocusedTab={mostFocusedTab} onSaveProfile={updateUserProfile} openDeadlinesCount={openDeadlinesCount} profileAge={profileAge} profileEmail={profileEmail} rollNumber={profileRollNumber} semester={profileSemester} totalFocusedMs={totalFocusedMs} upcomingRemindersCount={upcomingRemindersCount} userId={user.id} username={username} visibleInsights={visibleInsights}/>)}
 

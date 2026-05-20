@@ -180,10 +180,18 @@ export default function IssueReportingTab({
                         url,
                         dataUrl: '', // never store base64 in DB
                     }));
+                    if (evidenceWithUrls.some((item) => !item.url)) {
+                        setFormMessage('One or more evidence files could not be uploaded. Please try again before submitting.');
+                        return;
+                    }
+                }
+                else {
+                    setFormMessage('Evidence upload failed. Please try again before submitting.');
+                    return;
                 }
             } catch {
-                // Non-fatal — continue with metadata only
-                setFormMessage('Evidence upload had an issue, but the report will still be submitted.');
+                setFormMessage('Evidence upload failed. Please try again before submitting.');
+                return;
             }
         }
 
