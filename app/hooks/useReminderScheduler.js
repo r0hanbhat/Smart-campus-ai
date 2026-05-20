@@ -100,7 +100,7 @@ export function useReminderScheduler({ reminders, deadlines, isDataLoaded, userE
         if (!SEND_EMAIL_API_URL)
             return;
         try {
-            await fetch(SEND_EMAIL_API_URL, {
+            const response = await fetch(SEND_EMAIL_API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -112,9 +112,13 @@ export function useReminderScheduler({ reminders, deadlines, isDataLoaded, userE
                     deliveryReason: payload.deliveryReason ?? 'scheduled',
                 }),
             });
+            if (!response.ok) {
+                const details = await response.text();
+                console.error('Reminder email request failed:', response.status, details);
+            }
         }
-        catch {
-            // Best effort only.
+        catch (error) {
+            console.error('Reminder email request crashed:', error);
         }
     };
     const sendImmediateCreationEmail = async (params) => {
