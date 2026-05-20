@@ -9,10 +9,17 @@ import {
 import { getAuthenticatedUser } from '@/lib/server/supabase';
 import { retrieveContext, buildRAGContextSection } from '@/lib/server/rag';
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+function createGroqClient() {
+    const apiKey = process.env.GROQ_API_KEY?.trim();
+    if (!apiKey) {
+        throw new Error('GROQ_API_KEY is missing.');
+    }
+    return new Groq({ apiKey });
+}
 
 export async function POST(req) {
     try {
+        const groq = createGroqClient();
         const { message, userContext, recentMessages, imageDataUrl, imageName } = await req.json();
 
         if (!message || typeof message !== 'string') {
@@ -107,6 +114,7 @@ export async function POST(req) {
         });
     } catch (error) {
         console.error('Chat API Error:', error);
-        return NextResponse.json({ error: 'Failed to process chat message' }, { status: 500 });
+        const message = error instanceof Error ? error.message : 'Failed to process chat message';
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
