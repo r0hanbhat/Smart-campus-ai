@@ -74,13 +74,18 @@ export function useReminderScheduler({ reminders, deadlines, isDataLoaded, userE
     const scheduleNotificationForDeadline = async (deadline) => {
         if (!deadline?.date || !deadline?.time || !deadline?.title || deadline.completed)
             return false;
+        const offsets = Array.isArray(deadline?.offsets) && deadline.offsets.length > 0
+            ? deadline.offsets.filter((offset) => Number.isFinite(offset) && offset >= 0)
+            : [6, 2, 0];
         return scheduleNotificationMoments({
             itemId: deadline.id,
             title: 'Deadline Alert',
-            bodyBuilder: (offsetHours) => `${deadline.title} is due in ${offsetHours} hours.`,
+            bodyBuilder: (offsetHours) => offsetHours === 0
+                ? `${deadline.title} is due now.`
+                : `${deadline.title} is due in ${offsetHours} hours.`,
             date: deadline.date,
             time: deadline.time,
-            offsets: [6, 2],
+            offsets,
         });
     };
     const cancelScheduledNotification = (itemId) => {

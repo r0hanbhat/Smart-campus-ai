@@ -31,13 +31,14 @@ test('buildReminderEmailJobs creates reminder and deadline email jobs', () => {
             },
         ],
     });
-    assert.equal(jobs.length, 5);
+    assert.equal(jobs.length, 6);
     assert.deepEqual(jobs.map((job) => [job.item_type, job.item_id, job.offset_hours]), [
         ['reminder', 'reminder-1', 6],
         ['reminder', 'reminder-1', 2],
         ['reminder', 'reminder-1', 0],
         ['deadline', 'deadline-1', 6],
         ['deadline', 'deadline-1', 2],
+        ['deadline', 'deadline-1', 0],
     ]);
     assert.ok(jobs.every((job) => job.recipient_email === 'student@example.com'));
     assert.ok(jobs.every((job) => job.status === 'pending'));

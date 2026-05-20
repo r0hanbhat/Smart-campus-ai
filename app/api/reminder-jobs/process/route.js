@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { sendReminderEmail } from '@/lib/server/reminder-mailer';
 import { createSupabaseServiceRoleClient } from '@/lib/server/supabase';
+
 function isAuthorized(request) {
-    const secret = process.env.REMINDER_JOB_SECRET;
+    const secret = process.env.CRON_SECRET || process.env.REMINDER_JOB_SECRET;
     if (!secret) {
-        throw new Error('Missing REMINDER_JOB_SECRET in environment.');
+        throw new Error('Missing CRON_SECRET or REMINDER_JOB_SECRET in environment.');
     }
     const bearerToken = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
     const headerToken = request.headers.get('x-reminder-job-secret');
@@ -12,7 +13,8 @@ function isAuthorized(request) {
     const providedSecret = bearerToken || headerToken || queryToken;
     return providedSecret === secret;
 }
-export async function POST(request) {
+
+async function handleProcessRequest(request) {
     try {
         if (!isAuthorized(request)) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -82,4 +84,12 @@ export async function POST(request) {
         const message = error instanceof Error ? error.message : 'Failed to process reminder jobs';
         return NextResponse.json({ error: message }, { status: 500 });
     }
+}
+
+export async function GET(request) {
+    return handleProcessRequest(request);
+}
+
+export async function POST(request) {
+    return handleProcessRequest(request);
 }

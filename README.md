@@ -82,6 +82,9 @@ npm run test
 - Next.js route handlers are the primary backend-for-frontend layer.
 - Reminder emails now standardize on `app/api/send-email/route.ts`, and scheduled delivery is synced into `reminder_jobs` for server-side processing.
 - Browser notifications are still best-effort client features, but scheduled reminder/deadline emails no longer depend on an open browser tab.
+- Scheduled reminder email delivery still requires a background trigger.
+- Free option: use the GitHub Actions workflow in `.github/workflows/process-reminder-jobs.yml`. Add repository secrets `REMINDER_PROCESS_URL` and `CRON_SECRET`, then the workflow will call your deployed `/api/reminder-jobs/process` route every 5 minutes.
+- Vercel option: configure a Cron Job to call `/api/reminder-jobs/process` and set `CRON_SECRET` so Vercel sends the matching `Authorization: Bearer ...` header automatically.
 - The root Next.js app no longer depends on Firebase packages; `functions/` remains a separate legacy fallback project only.
 
 ## Current Priorities
