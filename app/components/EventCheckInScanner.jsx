@@ -2,35 +2,50 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+const CAMERA_ERRORS = {
+    NotAllowedError: 'Camera access was denied. Allow this site in your browser and allow camera access for desktop apps in Windows settings, then refresh.',
+    NotFoundError: 'No camera was found. Connect or enable a camera, then try again.',
+    NotReadableError: 'The camera could not be opened. Close other apps or tabs using it and try again.',
+    AbortError: 'The camera stopped while opening. Try starting it again.',
+};
+
+function releaseCamera(video, session) {
+    session?.controls?.stop();
+    session?.stream?.getTracks().forEach((track) => track.stop());
+    if (session?.stream && video?.srcObject === session.stream) {
+        video.srcObject = null;
+    }
+}
+
 export default function EventCheckInScanner({ eventId, eventTitle }) {
     const videoRef = useRef(null);
-    const controlsRef = useRef(null);
+    const cameraRef = useRef(null);
     const processingRef = useRef(false);
-    const mountedRef = useRef(false);
-    const scanningRef = useRef(false);
     const [scanning, setScanning] = useState(false);
     const [ticketToken, setTicketToken] = useState('');
     const [result, setResult] = useState(null);
     const [error, setError] = useState('');
 
     useEffect(() => {
-        mountedRef.current = true;
+        const video = videoRef.current;
         return () => {
-            mountedRef.current = false;
-            scanningRef.current = false;
-            controlsRef.current?.stop();
+            releaseCamera(video, cameraRef.current);
+            cameraRef.current = null;
         };
     }, []);
+
+    const stopCamera = () => {
+        releaseCamera(videoRef.current, cameraRef.current);
+        cameraRef.current = null;
+        setScanning(false);
+    };
 
     const checkIn = async (value) => {
         const token = value.trim();
         if (!token || processingRef.current) return;
 
         processingRef.current = true;
-        scanningRef.current = false;
-        controlsRef.current?.stop();
-        controlsRef.current = null;
-        setScanning(false);
+        stopCamera();
         setError('');
         setResult(null);
 
@@ -55,7 +70,8 @@ export default function EventCheckInScanner({ eventId, eventTitle }) {
     };
 
     const startCamera = async () => {
-        if (scanningRef.current) return;
+        const video = videoRef.current;
+        if (!video || cameraRef.current || processingRef.current) return;
         if (!navigator.mediaDevices?.getUserMedia) {
             setError('Camera scanning requires HTTPS or localhost. You can enter the ticket code manually.');
             return;
@@ -63,39 +79,53 @@ export default function EventCheckInScanner({ eventId, eventTitle }) {
 
         setError('');
         setResult(null);
-        scanningRef.current = true;
+        const session = {};
+        cameraRef.current = session;
         setScanning(true);
+
         try {
+            session.stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: 'environment' } },
+                audio: false,
+            });
+            if (cameraRef.current !== session) {
+                releaseCamera(video, session);
+                return;
+            }
+        } catch (cameraError) {
+            if (cameraRef.current === session) {
+                stopCamera();
+                setError(CAMERA_ERRORS[cameraError?.name] || 'Could not open the camera. Try again or enter the ticket code manually.');
+            }
+            return;
+        }
+
+        try {
+            video.srcObject = session.stream;
+            await video.play();
+            if (cameraRef.current !== session) return;
+
             const { BrowserQRCodeReader } = await import('@zxing/browser');
+            if (cameraRef.current !== session) return;
+
             const reader = new BrowserQRCodeReader();
-            const controls = await reader.decodeFromConstraints(
-                { video: { facingMode: { ideal: 'environment' } } },
-                videoRef.current,
+            session.controls = await reader.decodeFromVideoElement(
+                video,
                 (decoded) => {
-                    if (decoded && !processingRef.current) {
+                    if (decoded && cameraRef.current === session) {
                         void checkIn(decoded.getText());
                     }
                 },
             );
-            if (!mountedRef.current || !scanningRef.current) {
-                controls.stop();
-                return;
+            if (cameraRef.current !== session) {
+                releaseCamera(video, session);
             }
-            controlsRef.current = controls;
         } catch {
-            scanningRef.current = false;
-            controlsRef.current?.stop();
-            controlsRef.current = null;
-            setScanning(false);
-            setError('Could not start the camera. Check camera permission or enter the ticket code manually.');
+            if (cameraRef.current === session) {
+                stopCamera();
+                setError('Camera access was granted, but the QR scanner could not start. Refresh the page and try again, or enter the ticket code manually.');
+            }
         }
-    };
-
-    const stopCamera = () => {
-        scanningRef.current = false;
-        controlsRef.current?.stop();
-        controlsRef.current = null;
-        setScanning(false);
     };
 
     return (
