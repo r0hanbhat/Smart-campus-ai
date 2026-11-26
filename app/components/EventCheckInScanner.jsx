@@ -17,7 +17,7 @@ function releaseCamera(video, session) {
     }
 }
 
-export default function EventCheckInScanner({ eventId, eventTitle }) {
+export default function EventCheckInScanner({ eventId, eventTitle, gateDirection }) {
     const videoRef = useRef(null);
     const cameraRef = useRef(null);
     const processingRef = useRef(false);
@@ -50,10 +50,10 @@ export default function EventCheckInScanner({ eventId, eventTitle }) {
         setResult(null);
 
         try {
-            const response = await fetch('/api/events/check-in', {
+            const response = await fetch(gateDirection ? '/api/hostel/gate' : '/api/events/check-in', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ eventId, ticketToken: token }),
+                body: JSON.stringify(gateDirection ? { action: 'scan', direction: gateDirection, token } : { eventId, ticketToken: token }),
             });
             const data = await response.json();
             if (response.ok || response.status === 409 && data.alreadyCheckedIn) {
@@ -130,8 +130,8 @@ export default function EventCheckInScanner({ eventId, eventTitle }) {
 
     return (
         <section className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 p-4">
-            <div className="font-semibold text-slate-900">Event check-in: {eventTitle}</div>
-            <p className="mt-1 text-sm text-slate-600">Scan a registered student&apos;s QR ticket. Each ticket can be checked in once.</p>
+            <div className="font-semibold text-slate-900">{gateDirection ? `Scan for ${gateDirection}` : `Event check-in: ${eventTitle}`}</div>
+            <p className="mt-1 text-sm text-slate-600">{gateDirection ? 'Scan the QR shown on the hostel pass.' : 'Scan a registered student’s QR ticket. Each ticket can be checked in once.'}</p>
 
             <video
                 ref={videoRef}
@@ -166,13 +166,13 @@ export default function EventCheckInScanner({ eventId, eventTitle }) {
                     className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900"
                 />
                 <button type="submit" disabled={!ticketToken.trim()} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:opacity-50">
-                    Check in
+                    {gateDirection ? 'Record scan' : 'Check in'}
                 </button>
             </form>
 
             {result && (
                 <div className={`mt-3 rounded-xl border px-3 py-2 text-sm ${result.alreadyCheckedIn ? 'border-amber-300 bg-amber-100 text-amber-900' : 'border-emerald-300 bg-emerald-100 text-emerald-900'}`}>
-                    <div className="font-semibold">{result.alreadyCheckedIn ? 'Already checked in' : 'Check-in successful'}</div>
+                    <div className="font-semibold">{gateDirection ? `Recorded ${gateDirection}` : result.alreadyCheckedIn ? 'Already checked in' : 'Check-in successful'}</div>
                     <div>{result.attendee?.name}{result.attendee?.rollNumber ? ` · ${result.attendee.rollNumber}` : ''}</div>
                     {result.checkedInAt && <div className="mt-1 text-xs">{new Date(result.checkedInAt).toLocaleString()}</div>}
                 </div>

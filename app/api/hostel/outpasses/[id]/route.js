@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSupabaseServiceRoleClient, getAuthenticatedUser } from '@/lib/server/supabase';
+import { createSupabaseServiceRoleClient } from '@/lib/server/supabase';
 import { hostelErrorResponse, readWardenSession } from '@/lib/server/hostel-auth';
 import { normalizeHostelOutpassDecision } from '@/lib/smart-campus/outpass.js';
 
@@ -12,29 +12,8 @@ export async function PATCH(request, { params }) {
 
         const supabase = createSupabaseServiceRoleClient();
         const warden = await readWardenSession(supabase);
-        let staffRole;
-        let staffId;
-        if (warden) {
-            staffRole = 'warden';
-            staffId = warden.id;
-        } else {
-            const { user, error: authError } = await getAuthenticatedUser(request);
-            if (authError || !user?.id) {
-                return NextResponse.json({ error: 'Authorized hostel staff login required.' }, { status: 401 });
-            }
-            const { data: profile, error: profileError } = await supabase
-                .from('profiles')
-                .select('role')
-                .eq('user_id', user.id)
-                .maybeSingle();
-            if (profileError) {
-                throw profileError;
-            }
-            if (profile?.role !== 'admin') {
-                return NextResponse.json({ error: 'Only assigned wardens or hostel admins can review outpasses.' }, { status: 403 });
-            }
-            staffRole = 'admin';
-            staffId = user.id;
+        if (!warden) {
+            return NextResponse.json({ error: 'Warden login required to review leave.' }, { status: 403 });
         }
 
         let body;
@@ -51,8 +30,8 @@ export async function PATCH(request, { params }) {
 
         const { data: updatedId, error } = await supabase.rpc('review_hostel_outpass_request', {
             target_request_id: id,
-            staff_role: staffRole,
-            staff_id: staffId,
+            staff_role: 'warden',
+            staff_id: warden.id,
             next_status: status,
             decision_message: message,
         });

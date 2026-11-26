@@ -73,6 +73,7 @@ REMINDER_JOB_SECRET=
 - `supabase/club_events_schema_upgrade_registration.sql` (adds registration windows and event end dates)
 - `supabase/event_checkin_schema.sql` (after the club event schema)
 - `supabase/hostel_schema.sql`
+- `supabase/hostel_gate_passes.sql` (after the hostel schema, enables daily and approved leave QR passes)
 - `supabase/hostel_registration_schema.sql` (after `supabase/hostel_schema.sql`)
 - `supabase/facility_bookings_schema.sql` (after `supabase/hostel_schema.sql`)
 - `supabase/facility_booking_windows_upgrade.sql` (after `supabase/facility_bookings_schema.sql`)

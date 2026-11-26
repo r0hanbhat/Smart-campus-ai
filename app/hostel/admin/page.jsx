@@ -120,7 +120,7 @@ export default function HostelAdminPage() {
                         { id: 'blocks', label: 'Blocks & wardens' },
                         { id: 'hostellers', label: 'Hostellers' },
                         { id: 'dining', label: 'Hostel dining' },
-                        { id: 'outpasses', label: 'Leave & outpass requests' },
+                        { id: 'outpasses', label: 'Leave pass records' },
                     ]}
                     activeSection={activeSection}
                     onSelect={setActiveSection}

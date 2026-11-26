@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { PassButton } from './HostelGatePanel.jsx';
+
 const STATUS_LABELS = {
     pending: 'Pending approval',
     approved: 'Approved',
@@ -38,13 +40,13 @@ export default function HostelOutpassPanel() {
             const response = await fetch('/api/hostel/outpasses', { credentials: 'same-origin' });
             const payload = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error(payload.error || 'Unable to load outpass requests.');
+                throw new Error(payload.error || 'Unable to load leave requests.');
             }
             setRole(payload.role || '');
             setRequests(Array.isArray(payload.requests) ? payload.requests : []);
             setError('');
         } catch (loadError) {
-            setError(loadError instanceof Error ? loadError.message : 'Unable to load outpass requests.');
+            setError(loadError instanceof Error ? loadError.message : 'Unable to load leave requests.');
         } finally {
             if (showLoading) {
                 setLoading(false);
@@ -77,16 +79,16 @@ export default function HostelOutpassPanel() {
             });
             const payload = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error(payload.error || 'Unable to submit outpass request.');
+                throw new Error(payload.error || 'Unable to submit leave request.');
             }
             setDestination('');
             setPurpose('');
             setDepartureAt('');
             setReturnBy('');
-            setNotice('Your outpass request has been submitted for review.');
+            setNotice('Your leave request has been submitted for review.');
             await refresh();
         } catch (submitError) {
-            setError(submitError instanceof Error ? submitError.message : 'Unable to submit outpass request.');
+            setError(submitError instanceof Error ? submitError.message : 'Unable to submit leave request.');
         } finally {
             setSubmitting(false);
         }
@@ -112,13 +114,13 @@ export default function HostelOutpassPanel() {
             });
             const payload = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error(payload.error || 'Unable to review outpass request.');
+                throw new Error(payload.error || 'Unable to review leave request.');
             }
             setReviewNotes((current) => ({ ...current, [requestId]: '' }));
             setNotice(`Outpass request ${status}.`);
             await refresh();
         } catch (reviewError) {
-            setError(reviewError instanceof Error ? reviewError.message : 'Unable to review outpass request.');
+            setError(reviewError instanceof Error ? reviewError.message : 'Unable to review leave request.');
         } finally {
             setSubmitting(false);
         }
@@ -132,9 +134,9 @@ export default function HostelOutpassPanel() {
             <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
                     <div className="campus-kicker">Hostel services</div>
-                    <h2 className="mt-2 text-2xl font-bold text-slate-900">Leave & outpass requests</h2>
+                    <h2 className="mt-2 text-2xl font-bold text-slate-900">Leave passes</h2>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                        Submit an outpass for review or follow the approval timeline for your requests.
+                        Submit a leave pass for review or follow the approval timeline for your requests.
                     </p>
                 </div>
                 <button type="button" onClick={() => { void refresh(true); }} disabled={loading} className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">
@@ -146,7 +148,7 @@ export default function HostelOutpassPanel() {
 
             {role === 'hosteller' ? (
                 <form onSubmit={submitRequest} className="mt-6 grid gap-4 rounded-2xl border border-slate-200 bg-white/70 p-5 sm:grid-cols-2">
-                    <h3 className="font-semibold text-slate-900 sm:col-span-2">Request an outpass</h3>
+                    <h3 className="font-semibold text-slate-900 sm:col-span-2">Request a leave pass</h3>
                     <label className="block text-sm font-medium text-slate-700">
                         Destination
                         <input value={destination} onChange={(event) => setDestination(event.target.value)} maxLength={160} required className="campus-input mt-2 w-full rounded-xl px-4 py-3" placeholder="Where are you going?" />
@@ -171,10 +173,10 @@ export default function HostelOutpassPanel() {
 
             <div className="mt-6 space-y-4">
                 {loading && requests.length === 0 ? (
-                    <p className="rounded-2xl border border-dashed border-slate-200 px-4 py-7 text-center text-sm text-slate-500">Loading outpass requests…</p>
+                    <p className="rounded-2xl border border-dashed border-slate-200 px-4 py-7 text-center text-sm text-slate-500">Loading leave requests…</p>
                 ) : requests.length === 0 ? (
                     <p className="rounded-2xl border border-dashed border-slate-200 px-4 py-7 text-center text-sm text-slate-500">
-                        {canReview ? 'No outpass requests are waiting in your authorized scope.' : 'You have not submitted any outpass requests.'}
+                        {canReview ? 'No leave requests are waiting in your authorized scope.' : 'You have not submitted any leave requests.'}
                     </p>
                 ) : requests.map((request) => (
                     <article key={request.id} className="rounded-2xl border border-slate-200 bg-white/70 p-5">
@@ -214,7 +216,13 @@ export default function HostelOutpassPanel() {
                             </ol>
                         </div>
 
-                        {canReview && request.status === 'pending' ? (
+                        <div className="space-y-2 text-sm text-slate-600">
+                            {request.exitedAt && <p>Exited {formatDateTime(request.exitedAt)}</p>}
+                            {request.enteredAt && <p>Returned {formatDateTime(request.enteredAt)}</p>}
+                            {role === 'hosteller' && request.status === 'approved' && !request.enteredAt &&
+                                (request.exitedAt || new Date(request.returnBy) > new Date()) && <PassButton leaveId={request.id} />}
+                        </div>
+                        {role === 'warden' && request.status === 'pending' ? (
                             <form onSubmit={(event) => event.preventDefault()} className="mt-5 rounded-xl bg-slate-50 p-4">
                                 <label className="block text-sm font-medium text-slate-700">
                                     Review note

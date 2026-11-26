@@ -1,40 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServiceRoleClient, getAuthenticatedUser } from '@/lib/server/supabase';
-import { hostelErrorResponse, readWardenSession } from '@/lib/server/hostel-auth';
+import { hostelErrorResponse, readWardenSession, getHosteller } from '@/lib/server/hostel-auth';
 import { listHostelOutpassRequests } from '@/lib/server/hostel-outpass';
 import { validateHostelOutpassRequest } from '@/lib/smart-campus/outpass.js';
-
-async function getHosteller(supabase, request) {
-    const { user, error: authError } = await getAuthenticatedUser(request);
-    if (authError || !user?.id) {
-        return { response: NextResponse.json({ error: 'Hosteller login required.' }, { status: 401 }) };
-    }
-
-    const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('user_id', user.id)
-        .maybeSingle();
-    if (profileError) {
-        throw profileError;
-    }
-    if (profile?.role !== 'student') {
-        return { response: NextResponse.json({ error: 'Hosteller portal access required.' }, { status: 403 }) };
-    }
-
-    const { data: resident, error: residentError } = await supabase
-        .from('hostel_residents')
-        .select('user_id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-    if (residentError) {
-        throw residentError;
-    }
-    if (!resident) {
-        return { response: NextResponse.json({ error: 'A hostel room assignment is required.' }, { status: 403 }) };
-    }
-    return { user };
-}
 
 export async function GET(request) {
     try {

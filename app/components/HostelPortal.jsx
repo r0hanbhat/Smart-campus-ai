@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import HostelMaintenancePanel from './HostelMaintenancePanel.jsx';
 import HostelMessPanel from './HostelMessPanel.jsx';
+import { HostelGatePanel } from './HostelGatePanel.jsx';
 import HostelOutpassPanel from './HostelOutpassPanel.jsx';
 import FacilityBookingPanel from './FacilityBookingPanel.jsx';
 import HostelAccessRequestPanel from './HostelAccessRequestPanel.jsx';
@@ -15,7 +16,7 @@ function PortalCard({ children }) {
     return <div className="campus-panel mx-auto w-full max-w-4xl rounded-[2rem] p-6 sm:p-8">{children}</div>;
 }
 
-function HostelServiceTabs() {
+function HostelServiceTabs({ warden = false }) {
     const [activeService, setActiveService] = useState('outpass');
 
     return (
@@ -23,13 +24,14 @@ function HostelServiceTabs() {
             <HostelSectionTabs
                 label="Hostel service requests"
                 sections={[
-                    { id: 'outpass', label: 'Leave & outpass requests' },
+                    { id: 'outpass', label: 'Leave passes' },
+                    { id: 'daily', label: warden ? 'Daily outpasses' : 'Daily outpass' },
                     { id: 'maintenance', label: 'Maintenance requests' },
                 ]}
                 activeSection={activeService}
                 onSelect={setActiveService}
             />
-            {activeService === 'outpass' ? <HostelOutpassPanel /> : <HostelMaintenancePanel />}
+            {activeService === 'outpass' ? <HostelOutpassPanel /> : activeService === 'daily' ? <HostelGatePanel warden={warden} /> : <HostelMaintenancePanel />}
         </div>
     );
 }
@@ -247,7 +249,7 @@ function HostelPortalContent() {
                     ) : activeWardenSection === 'dining' ? (
                         <HostelMessPanel />
                     ) : (
-                        <HostelServiceTabs />
+                        <HostelServiceTabs warden />
                     )}
                     <Link href="/" className="inline-flex text-sm font-medium text-sky-800 hover:underline">Back to Smart Campus</Link>
                 </div>
@@ -380,6 +382,7 @@ function HostelPortalContent() {
                 ) : null}
                 <div className="mt-7 flex flex-wrap justify-center gap-5 text-sm">
                     {activeRole === 'hosteller' ? <Link href="/hostel/register" className="font-semibold text-pink-700 hover:underline">Create hosteller account</Link> : null}
+                    <Link href="/hostel/guard" className="font-medium text-sky-800 hover:underline">Guard login</Link>
                     <Link href="/auth?role=student&mode=login" className="font-medium text-sky-800 hover:underline">Student login</Link>
                     <Link href="/auth?role=admin&mode=login" className="font-medium text-slate-600 hover:underline">Admin login</Link>
                 </div>
