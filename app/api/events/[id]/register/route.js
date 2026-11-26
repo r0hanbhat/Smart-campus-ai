@@ -1,29 +1,35 @@
 import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/supabase';
 import { sendReminderEmail } from '@/lib/server/reminder-mailer';
+import { getPublishedEventState } from '@/lib/smart-campus/published-events.js';
 
 // POST /api/events/[id]/register
 export async function POST(request, { params }) {
   try {
-    const { user, supabase, error: authError } = await getAuthenticatedUser();
+    const { user, supabase, error: authError } = await getAuthenticatedUser(request);
     if (authError || !user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { id } = await params;
 
-    const { data: event } = await supabase
+    const { data: event, error: eventError } = await supabase
       .from('events')
       .select(`
-        id, title, proposed_date, event_end_date, time_start, time_end, venue, is_published,
+        id, title, proposed_date, event_end_date, time_start, time_end, registration_starts, venue, is_published,
         club:clubs!events_club_id_fkey(club_name)
       `)
       .eq('id', id)
       .maybeSingle();
 
+    if (eventError) return NextResponse.json({ error: eventError.message }, { status: 500 });
     if (!event || !event.is_published) {
       return NextResponse.json({ error: 'Event not found or not available for registration' }, { status: 404 });
     }
-    if (new Date(event.proposed_date) < new Date(new Date().toDateString())) {
+    const eventState = getPublishedEventState(event);
+    if (eventState.is_past) {
       return NextResponse.json({ error: 'Registration closed — event has already passed' }, { status: 410 });
+    }
+    if (!eventState.registration_open) {
+      return NextResponse.json({ error: 'Registration has not opened for this event yet' }, { status: 409 });
     }
 
     const { error } = await supabase

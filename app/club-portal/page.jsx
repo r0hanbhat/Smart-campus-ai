@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import EventCheckInScanner from '@/app/components/EventCheckInScanner.jsx';
 
 const STATUS_COLORS = {
   PENDING_COORDINATOR_APPROVAL: 'bg-amber-500/20 text-amber-700 border-amber-400/30',
@@ -172,6 +173,7 @@ export default function ClubPortalPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingEvent, setEditingEvent] = useState(null);
   const [registrationModalEvent, setRegistrationModalEvent] = useState(null);
+  const [showCheckInScanner, setShowCheckInScanner] = useState(false);
   const [formMsg, setFormMsg] = useState('');
   const [formErr, setFormErr] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -295,10 +297,12 @@ export default function ClubPortalPage() {
 
   const openRegistrationsModal = (event) => {
     setRegistrationModalEvent(event);
+    setShowCheckInScanner(false);
   };
 
   const closeRegistrationsModal = () => {
     setRegistrationModalEvent(null);
+    setShowCheckInScanner(false);
   };
 
   // ── Loading / redirect state ────────────────────────────────────────────────
@@ -461,13 +465,27 @@ export default function ClubPortalPage() {
                   {registrationModalEvent.registrations.length} student{registrationModalEvent.registrations.length === 1 ? '' : 's'} registered
                 </p>
               </div>
-              <button
-                onClick={closeRegistrationsModal}
-                className="rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-900 hover:bg-slate-200"
-              >
-                Close
-              </button>
+              <div className="flex flex-wrap gap-2">
+                {registrationModalEvent.is_published && (
+                  <button
+                    onClick={() => setShowCheckInScanner((current) => !current)}
+                    className="rounded-full border border-sky-300 bg-sky-50 px-4 py-2 text-sm text-sky-800 hover:bg-sky-100"
+                  >
+                    {showCheckInScanner ? 'Hide scanner' : 'Scan check-in QR'}
+                  </button>
+                )}
+                <button
+                  onClick={closeRegistrationsModal}
+                  className="rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-900 hover:bg-slate-200"
+                >
+                  Close
+                </button>
+              </div>
             </div>
+
+            {showCheckInScanner && (
+              <EventCheckInScanner eventId={registrationModalEvent.id} eventTitle={registrationModalEvent.title} />
+            )}
 
             <div className="campus-scroll mt-5 max-h-[70vh] space-y-3 overflow-y-auto pr-1">
               {registrationModalEvent.registrations.map((reg, index) => {

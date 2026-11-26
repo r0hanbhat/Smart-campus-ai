@@ -12,7 +12,7 @@ function selectCanonicalGlobalConversation(conversationRows) {
     return globalRows[0] ?? null;
 }
 
-export default function CampusChatPanel({ userId, userEmail }) {
+export default function CampusChatPanel({ userId, userEmail, initialView = 'chat' }) {
     const [supabase] = useState(() => createClient());
     const [profiles, setProfiles] = useState([]);
     const [friendRequests, setFriendRequests] = useState([]);
@@ -24,7 +24,10 @@ export default function CampusChatPanel({ userId, userEmail }) {
     const [globalReadStatuses, setGlobalReadStatuses] = useState([]);
     const [messages, setMessages] = useState([]);
     const [selectedConversationId, setSelectedConversationId] = useState(null);
-    const [activeView, setActiveView] = useState('chat');
+    const [activeView, setActiveView] = useState(initialView);
+    useEffect(() => {
+        setActiveView(initialView);
+    }, [initialView]);
     const [searchTerm, setSearchTerm] = useState('');
     const [newMessage, setNewMessage] = useState('');
     const [groupName, setGroupName] = useState('');

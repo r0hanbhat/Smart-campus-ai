@@ -2,16 +2,14 @@ import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
+import { CLUB_SESSION_MAX_AGE_SECONDS, createClubSessionToken, readClubSession } from '@/lib/server/club-auth.js';
 
 // GET /api/clubs/login — returns current club session info
 export async function GET() {
   try {
     const cookieStore = await cookies();
-    const raw = cookieStore.get('club_session')?.value;
-    if (!raw) return NextResponse.json({ club: null }, { status: 401 });
-
-    const session = JSON.parse(raw);
-    if (!session?.club_id) return NextResponse.json({ club: null }, { status: 401 });
+    const session = await readClubSession(cookieStore);
+    if (!session) return NextResponse.json({ club: null }, { status: 401 });
 
     return NextResponse.json({ club: session });
   } catch {
@@ -66,10 +64,11 @@ export async function POST(request) {
     };
     const response = NextResponse.json({ club: safeClub });
 
-    response.cookies.set('club_session', JSON.stringify({ club_id: club.id, club_name: club.club_name }), {
+    response.cookies.set('club_session', createClubSessionToken(club, process.env.SUPABASE_SERVICE_ROLE_KEY), {
       httpOnly: true,
       sameSite: 'lax',
-      maxAge: 60 * 60 * 8, // 8 hours
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: CLUB_SESSION_MAX_AGE_SECONDS,
       path: '/',
     });
 

@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { createServerClient } from '@supabase/ssr';
+import { readClubSession } from '@/lib/server/club-auth.js';
 
 const EDITABLE_STATUSES = ['REJECTED_BY_COORDINATOR', 'REJECTED_BY_ADMIN'];
 
 async function getSessionAndClient() {
   const cookieStore = await cookies();
-  const raw = cookieStore.get('club_session')?.value;
-  if (!raw) return { session: null, supabase: null };
-  let session;
-  try { session = JSON.parse(raw); } catch { return { session: null, supabase: null }; }
-  if (!session?.club_id) return { session: null, supabase: null };
+  const session = await readClubSession(cookieStore);
+  if (!session) return { session: null, supabase: null };
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,

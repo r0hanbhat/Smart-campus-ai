@@ -1,11 +1,13 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import AdminIssueManagementPanel from './AdminIssueManagementPanel.jsx';
 import AdminKnowledgePanel from './AdminKnowledgePanel.jsx';
 import AdminNoticePanel from './AdminNoticePanel.jsx';
 import AdminEventApprovalPanel from './AdminEventApprovalPanel.jsx';
+import FacilityManagementPanel from './FacilityManagementPanel.jsx';
 import { TeacherAttendancePanel } from './AttendancePanels.jsx';
 import CoordinatorEventPanel from './CoordinatorEventPanel.jsx';
 import JcufaChatPanel from './JcufaChatPanel.jsx';
@@ -1263,6 +1265,7 @@ export function AdminDashboard({ displayName, profile, onSignOut }) {
     const adminSections = [
         { id: 'teacher-verification', label: 'Teacher Verification', description: 'Pending teacher reviews and approval workflow.' },
         { id: 'operations', label: 'Operations', description: 'Knowledge, notices, issues, and event approvals.' },
+        { id: 'facilities', label: 'Facilities', description: 'Recurring availability for shared campus and hostel resources.' },
         { id: 'jcufa', label: 'JCUFA Positions', description: 'Assign association roles to faculty accounts.' },
         { id: 'monitoring', label: 'Monitoring', description: 'Sessions, audit trails, and system visibility.' },
         { id: 'user-management', label: 'User Management', description: 'Search teacher and student profiles.' },
@@ -1330,6 +1333,9 @@ export function AdminDashboard({ displayName, profile, onSignOut }) {
                             </p>
                         </div>
                         <div className="flex flex-col gap-3 sm:flex-row">
+                            <Link href="/hostel/admin" className="flex items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-500/10 px-5 py-2.5 text-sm font-medium text-cyan-800 transition hover:bg-cyan-500/15">
+                                Manage Hostel
+                            </Link>
                             <div className="campus-panel rounded-[1.3rem] px-4 py-3 text-sm text-slate-700">
                                 <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Admin</div>
                                 <div className="mt-1 text-slate-900">{displayName}</div>
@@ -1394,6 +1400,8 @@ export function AdminDashboard({ displayName, profile, onSignOut }) {
                                 </PanelCard>
                             </>
                         ) : null}
+
+                        {activeAdminSection === 'facilities' ? <FacilityManagementPanel /> : null}
 
                         {activeAdminSection === 'jcufa' ? (
                             <PanelCard

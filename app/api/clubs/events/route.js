@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { readClubSession } from '@/lib/server/club-auth.js';
 
 function createAdminClient(cookieStore) {
   return createServerClient(
@@ -21,11 +22,8 @@ function createAdminClient(cookieStore) {
 export async function GET() {
   try {
     const cookieStore = await cookies();
-    const raw = cookieStore.get('club_session')?.value;
-    if (!raw) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    let session;
-    try { session = JSON.parse(raw); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
-    if (!session?.club_id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const session = await readClubSession(cookieStore);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const supabase = createAdminClient(cookieStore);
     const { data: events, error } = await supabase
@@ -54,11 +52,8 @@ export async function GET() {
 export async function POST(request) {
   try {
     const cookieStore = await cookies();
-    const raw = cookieStore.get('club_session')?.value;
-    if (!raw) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    let session;
-    try { session = JSON.parse(raw); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
-    if (!session?.club_id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const session = await readClubSession(cookieStore);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await request.json();
     const { title, description, proposed_date, time_start, time_end, venue, expected_participants, registration_starts, event_end_date } = body;

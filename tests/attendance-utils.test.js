@@ -59,3 +59,31 @@ test('buildStudentAttendanceReportWithSubjects preserves mapped subjects even be
     assert.equal(report.subjects[1].summary.percentage, 0);
     assert.deepEqual(report.subjects[1].history, []);
 });
+
+test('overall attendance is weighted by recorded classes and ignores subjects without sessions', () => {
+    const report = buildStudentAttendanceReportWithSubjects([
+        { id: '1', subject_id: 'subject-a', status: 'present' },
+        { id: '2', subject_id: 'subject-a', status: 'absent' },
+        { id: '3', subject_id: 'subject-b', status: 'present' },
+    ], [
+        { id: 'subject-a', name: 'Data Structures' },
+        { id: 'subject-b', name: 'Operating Systems' },
+        { id: 'subject-c', name: 'Networks' },
+    ]);
+
+    assert.equal(report.overall.percentage, 66.7);
+    assert.equal(report.overall.presentSessions, 2);
+    assert.equal(report.overall.totalSessions, 3);
+    assert.equal(report.overall.isBelowThreshold, true);
+    assert.equal(report.subjects.find((subject) => subject.subjectId === 'subject-c').summary.percentage, 0);
+});
+
+test('mapped subjects without recorded sessions do not trigger the overall attendance warning', () => {
+    const report = buildStudentAttendanceReportWithSubjects([], [
+        { id: 'subject-a', name: 'Data Structures' },
+    ]);
+
+    assert.equal(report.overall.percentage, 0);
+    assert.equal(report.overall.totalSessions, 0);
+    assert.equal(report.overall.isBelowThreshold, false);
+});

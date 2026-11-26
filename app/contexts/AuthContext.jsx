@@ -99,7 +99,6 @@ export function AuthProvider({ children }) {
         window.addEventListener('pagehide', unregisterTab);
         return () => {
             window.removeEventListener('pagehide', unregisterTab);
-            unregisterTab();
         };
     }, []);
     useEffect(() => {

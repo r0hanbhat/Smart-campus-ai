@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthenticatedUser, createSupabaseServiceRoleClient } from '@/lib/server/supabase';
+import { buildStudentAttendanceReportWithSubjects } from '@/lib/smart-campus/attendance.js';
 
 // GET /api/student/dashboard
 export async function GET() {
@@ -49,7 +50,7 @@ export async function GET() {
       // Events the student has registered for
       serviceClient
         .from('event_registrations')
-        .select('id, registered_at, events(title, proposed_date, time_start, status, is_published)')
+        .select('id, registered_at, events(title, proposed_date, time_start, status, is_published)', { count: 'exact' })
         .eq('student_id', user.id)
         .order('registered_at', { ascending: false })
         .limit(5),
@@ -66,6 +67,8 @@ export async function GET() {
     // We also attempt the standalone tables as a secondary source.
     let plannerReminders = [];
     let plannerDeadlines = [];
+    let plannerRemindersCount = null;
+    let plannerDeadlinesCount = null;
 
     // Primary: read from user_state
     try {
@@ -78,16 +81,17 @@ export async function GET() {
       if (stateRow) {
         const rawReminders = Array.isArray(stateRow.reminders) ? stateRow.reminders : [];
         const rawDeadlines = Array.isArray(stateRow.deadlines) ? stateRow.deadlines : [];
-        plannerReminders = rawReminders
-          .filter(r => r && r.eventName)
+        const validReminders = rawReminders.filter(r => r && r.eventName);
+        const openDeadlines = rawDeadlines.filter(d => d && d.title && !d.completed);
+        plannerRemindersCount = validReminders.length;
+        plannerDeadlinesCount = openDeadlines.length;
+        plannerReminders = validReminders
           .map(r => {
             const remindAt = r.date && r.time ? new Date(`${r.date} ${r.time}`) : null;
             return { id: r.id, title: r.eventName, at: remindAt ? remindAt.toISOString() : r.date };
           })
           .slice(0, 6);
-
-        plannerDeadlines = rawDeadlines
-          .filter(d => d && d.title && !d.completed)
+        plannerDeadlines = openDeadlines
           .map(d => {
             const dueAt = d.date && d.time ? new Date(`${d.date} ${d.time}`) : (d.date ? new Date(d.date) : null);
             return { id: d.id, title: d.title, due: dueAt ? dueAt.toISOString() : d.date };
@@ -104,7 +108,7 @@ export async function GET() {
         const [remindersRes, deadlinesRes] = await Promise.all([
           supabase
             .from('reminders')
-            .select('id, title, remind_at')
+            .select('id, title, remind_at', { count: 'exact' })
             .eq('user_id', user.id)
             .eq('is_done', false)
             .gte('remind_at', new Date().toISOString())
@@ -112,7 +116,7 @@ export async function GET() {
             .limit(4),
           supabase
             .from('deadlines')
-            .select('id, title, due_date')
+            .select('id, title, due_date', { count: 'exact' })
             .eq('user_id', user.id)
             .eq('is_completed', false)
             .order('due_date', { ascending: true })
@@ -120,6 +124,8 @@ export async function GET() {
         ]);
         plannerReminders = (remindersRes.data || []).map(r => ({ id: r.id, title: r.title, at: r.remind_at }));
         plannerDeadlines = (deadlinesRes.data || []).map(d => ({ id: d.id, title: d.title, due: d.due_date }));
+        plannerRemindersCount = remindersRes.error ? null : (remindersRes.count ?? plannerReminders.length);
+        plannerDeadlinesCount = deadlinesRes.error ? null : (deadlinesRes.count ?? plannerDeadlines.length);
       } catch {
         // Standalone tables don't exist — that's fine
       }
@@ -144,36 +150,37 @@ export async function GET() {
         allMappedSubjects = subjectRows || [];
     }
 
-    // Per-subject breakdown — include all mapped subjects even if 0 records
-    const subjectMap = {};
-    for (const subj of allMappedSubjects) {
-      subjectMap[subj.id] = { name: subj.name || 'Unknown', total: 0, present: 0 };
-    }
-    for (const r of records) {
-      const key = r.subject_id;
-      if (!subjectMap[key]) subjectMap[key] = { name: r.subjects?.name || 'Unknown', total: 0, present: 0 };
-      subjectMap[key].total++;
-      if (r.status === 'present') subjectMap[key].present++;
-    }
-    const bySubject = Object.values(subjectMap)
-      .map(s => ({ name: s.name, total: s.total, present: s.present, pct: s.total > 0 ? Math.round((s.present / s.total) * 100) : 0 }))
-      .sort((a, b) => a.pct - b.pct)
+    const attendanceReport = buildStudentAttendanceReportWithSubjects(
+      records.map(record => ({
+        ...record,
+        subject_name: record.subjects?.name || 'Unknown',
+      })),
+      allMappedSubjects
+    );
+    const totalRecords = attendanceReport.overall.totalSessions;
+    const presentRecords = attendanceReport.overall.presentSessions;
+    const bySubject = attendanceReport.subjects
+      .map(subject => ({
+        name: subject.subjectName,
+        total: subject.summary.totalSessions,
+        present: subject.summary.presentSessions,
+        pct: subject.summary.percentage,
+      }))
+      .sort((left, right) => {
+        const leftHasRecords = left.total > 0;
+        const rightHasRecords = right.total > 0;
+        return Number(rightHasRecords) - Number(leftHasRecords)
+          || left.pct - right.pct
+          || left.name.localeCompare(right.name);
+      })
       .slice(0, 5);
-
-    // Overall = average of percentages for subjects that have at LEAST 1 recorded class.
-    // Subjects with 0 classes are displayed but excluded from the average — they have no data yet.
-    const totalRecords = records.length;
-    const presentRecords = records.filter(r => r.status === 'present').length;
-    const subjectList = Object.values(subjectMap);
-    const subjectsWithClasses = subjectList.filter(s => s.total > 0);
-    const overallPct = subjectsWithClasses.length > 0
-      ? Math.round(subjectsWithClasses.reduce((sum, s) => sum + (s.present / s.total) * 100, 0) / subjectsWithClasses.length)
-      : (totalRecords > 0 ? Math.round((presentRecords / totalRecords) * 100) : null);
+    const overallPct = totalRecords > 0 ? attendanceReport.overall.percentage : null;
 
     // ── Clubs — primary source is user_state.clubs JSON blob ────────────
     // The app stores joined clubs in user_state.clubs[] (club.joined === true),
     // NOT in a club_memberships DB table. Read that first.
     let clubRows = [];
+    let clubsCount = null;
     try {
       const { data: stateClubs } = await serviceClient
         .from('user_state')
@@ -186,17 +193,21 @@ export async function GET() {
         : [];
 
       if (joinedFromState.length > 0) {
+        clubsCount = joinedFromState.length;
         clubRows = joinedFromState.map(c => ({ id: c.id, name: c.name || c.club_name || c.id }));
       } else {
         // Fallback: try club_memberships table (for future DB-backed join flow)
-        const { data: joinedClubs, error: clubError } = await serviceClient
+        const { data: joinedClubs, error: clubError, count } = await serviceClient
           .from('club_memberships')
-          .select('club_id, clubs(club_name)')
+          .select('club_id, clubs(club_name)', { count: 'exact' })
           .eq('user_id', user.id)
           .limit(10);
 
-        if (!clubError && joinedClubs?.length) {
-          clubRows = joinedClubs.map(m => ({ id: m.club_id, name: m.clubs?.club_name || m.club_id }));
+        if (!clubError) {
+          clubsCount = count ?? joinedClubs?.length ?? 0;
+          if (joinedClubs?.length) {
+            clubRows = joinedClubs.map(m => ({ id: m.club_id, name: m.clubs?.club_name || m.club_id }));
+          }
         }
       }
     } catch {
@@ -211,6 +222,7 @@ export async function GET() {
         bySubject,
         noStudentRecord: !studentRow?.id,
       },
+      eventsCount: eventsRes.error ? null : (eventsRes.count ?? eventsRes.data?.length ?? 0),
       events: (eventsRes.error ? [] : eventsRes.data || []).map(r => ({
         title: r.events?.title,
         date: r.events?.proposed_date,
@@ -220,8 +232,11 @@ export async function GET() {
       planner: {
         reminders: plannerReminders,
         deadlines: plannerDeadlines,
+        remindersCount: plannerRemindersCount,
+        deadlinesCount: plannerDeadlinesCount,
       },
       clubs: (clubRows || []).map(m => ({ id: m.id || m.club_id, name: m.name || m.clubs?.club_name || m.id || m.club_id })),
+      clubsCount,
       warnings,
     });
   } catch (err) {

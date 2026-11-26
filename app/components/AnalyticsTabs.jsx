@@ -72,28 +72,34 @@ export function DashboardOverviewTab({ events = [], clubs = [], reminders = [], 
     }, []);
 
     const pct = data?.attendance?.overall;
-    const dashboardEvents = data?.events?.length ? data.events : events.filter((event) => event.attending || event.checkedIn).map((event) => ({
+    const hasDashboardEvents = Number.isFinite(data?.eventsCount);
+    const dashboardEvents = hasDashboardEvents ? data.events : events.filter((event) => event.attending || event.checkedIn).map((event) => ({
         title: event.name,
         date: event.date,
         time: event.time,
         isPublished: true,
     }));
-    const dashboardClubs = data?.clubs?.length ? data.clubs : clubs.filter((club) => club.joined).map((club) => ({ id: club.id, name: club.name }));
-    const dashboardReminders = data?.planner?.reminders?.length ? data.planner.reminders : reminders.map((reminder) => ({
+    const hasDashboardClubs = Number.isFinite(data?.clubsCount);
+    const dashboardClubs = hasDashboardClubs ? data.clubs : clubs.filter((club) => club.joined).map((club) => ({ id: club.id, name: club.name }));
+    const hasDashboardReminders = Number.isFinite(data?.planner?.remindersCount);
+    const dashboardReminders = hasDashboardReminders ? data.planner.reminders : reminders.map((reminder) => ({
         id: reminder.id,
         title: reminder.eventName || reminder.title || 'Reminder',
         at: reminder.date && reminder.time ? `${reminder.date} ${reminder.time}` : reminder.date,
     }));
-    const dashboardDeadlines = data?.planner?.deadlines?.length ? data.planner.deadlines : deadlines
+    const hasDashboardDeadlines = Number.isFinite(data?.planner?.deadlinesCount);
+    const dashboardDeadlines = hasDashboardDeadlines ? data.planner.deadlines : deadlines
         .filter((deadline) => !deadline.completed)
         .map((deadline) => ({
             id: deadline.id,
             title: deadline.title || 'Deadline',
             due: deadline.date && deadline.time ? `${deadline.date} ${deadline.time}` : deadline.date,
         }));
-    const eventCount = data?.events?.length ? data.events.length : Math.max(dashboardEvents.length, attendedEventsCount);
-    const clubCount = data?.clubs?.length ? data.clubs.length : Math.max(dashboardClubs.length, joinedClubsCount);
-    const taskCount = data?.planner ? Math.max(dashboardReminders.length + dashboardDeadlines.length, upcomingRemindersCount + openDeadlinesCount) : upcomingRemindersCount + openDeadlinesCount;
+    const eventCount = hasDashboardEvents ? data.eventsCount : Math.max(dashboardEvents.length, attendedEventsCount);
+    const clubCount = hasDashboardClubs ? data.clubsCount : Math.max(dashboardClubs.length, joinedClubsCount);
+    const reminderCount = hasDashboardReminders ? data.planner.remindersCount : Math.max(dashboardReminders.length, upcomingRemindersCount);
+    const deadlineCount = hasDashboardDeadlines ? data.planner.deadlinesCount : Math.max(dashboardDeadlines.length, openDeadlinesCount);
+    const taskCount = reminderCount + deadlineCount;
     const attColor = pct == null ? 'border-slate-500/30 from-slate-500/20 text-slate-500'
         : pct >= 75 ? 'border-emerald-400/30 from-emerald-500/20 text-emerald-700'
         : pct >= 60 ? 'border-amber-400/30 from-amber-500/20 text-amber-700'

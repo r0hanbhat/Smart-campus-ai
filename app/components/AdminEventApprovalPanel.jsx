@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import EventCheckInScanner from './EventCheckInScanner.jsx';
 
 const STATUS_BADGE = {
   PENDING_COORDINATOR_APPROVAL: { label: 'Pending Coordinator', color: 'bg-slate-100 text-slate-500 border-slate-200' },
@@ -21,6 +22,7 @@ function EmptyState({ title }) {
 
 function AdminEventCard({ event, onAction }) {
   const [showReject, setShowReject] = useState(false);
+  const [showCheckIn, setShowCheckIn] = useState(false);
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
@@ -64,6 +66,18 @@ function AdminEventCard({ event, onAction }) {
         <div><span className="text-slate-400 block">Venue</span>{event.venue || 'TBD'}</div>
         <div><span className="text-slate-400 block">Expected</span>{event.expected_participants} participants</div>
       </div>
+      {event.is_published && (
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => setShowCheckIn((current) => !current)}
+            className="rounded-[1rem] border border-sky-400/25 bg-sky-500/10 px-4 py-2 text-sm font-medium text-sky-700"
+          >
+            {showCheckIn ? 'Hide check-in scanner' : 'Open check-in scanner'}
+          </button>
+          {showCheckIn && <EventCheckInScanner eventId={event.id} eventTitle={event.title} />}
+        </div>
+      )}
       {event.approvals?.length > 0 && (
         <div className="mt-4 rounded-[1rem] border border-slate-200 bg-white/[0.04] p-4">
           <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Approval History</div>

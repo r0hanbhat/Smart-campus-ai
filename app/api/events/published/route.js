@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/server/supabase';
+import { getPublishedEventState } from '@/lib/smart-campus/published-events.js';
 
 // GET /api/events/published
 export async function GET(request) {
@@ -11,7 +12,7 @@ export async function GET(request) {
       .from('events')
       .select(`
         id, title, description, proposed_date, event_end_date, time_start, time_end, venue,
-        expected_participants, created_at, registration_starts,
+        expected_participants, created_at, updated_at, registration_starts,
         club:clubs!events_club_id_fkey(club_name),
         registrations:event_registrations(count)
       `)
@@ -22,43 +23,34 @@ export async function GET(request) {
 
     // Check current user's registrations across ALL published events
     const eventIds = (events || []).map(e => e.id);
-    let userRegistrations = new Set();
+    const userRegistrations = new Map();
     if (eventIds.length > 0) {
-      const { data: regs } = await supabase
+      const { data: regs, error: registrationsError } = await supabase
         .from('event_registrations')
-        .select('event_id')
+        .select('event_id, registered_at')
         .eq('student_id', user.id)
         .in('event_id', eventIds);
-      userRegistrations = new Set((regs || []).map(r => r.event_id));
+      if (registrationsError) {
+        return NextResponse.json({ error: registrationsError.message }, { status: 500 });
+      }
+      for (const registration of regs || []) {
+        userRegistrations.set(registration.event_id, registration.registered_at);
+      }
     }
 
-    const nowMs = Date.now();
-    const todayMs = new Date(new Date().toDateString()).getTime();
+    const now = new Date();
 
     const enriched = (events || []).map(e => {
-      const startMs = new Date(e.proposed_date + 'T00:00:00').getTime();
-      const endDate = e.event_end_date || e.proposed_date;
-      const endMs = new Date(endDate + 'T23:59:59').getTime();
-      const isPast = nowMs > endMs;
-      const isToday = startMs === todayMs;
-      // Event has already started (at or past start date)
-      const hasStarted = todayMs >= startMs;
-      const regStartsMs = e.registration_starts ? new Date(e.registration_starts).getTime() : null;
-      // Registration is open if: event hasn't started AND not past AND (no reg_starts set OR now >= reg_starts)
-      const registrationOpen = !hasStarted && !isPast && (regStartsMs === null || nowMs >= regStartsMs);
-      // Upcoming = approved but registration hasn't opened yet (and event hasn't started)
-      const isUpcoming = !hasStarted && !isPast && regStartsMs !== null && nowMs < regStartsMs;
-      const userRegistered = userRegistrations.has(e.id);
+      const eventState = getPublishedEventState(e, now);
+      const registeredAt = userRegistrations.get(e.id) || null;
+      const userRegistered = Boolean(registeredAt);
 
       return {
         ...e,
+        ...eventState,
         registration_count: e.registrations?.[0]?.count ?? 0,
         user_registered: userRegistered,
-        is_today: isToday,
-        is_past: isPast,
-        has_started: hasStarted,
-        registration_open: registrationOpen,
-        is_upcoming: isUpcoming,
+        registered_at: registeredAt,
         registration_starts_formatted: e.registration_starts
           ? new Date(e.registration_starts).toLocaleString('en-IN', {
               day: 'numeric', month: 'short', year: 'numeric',

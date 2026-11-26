@@ -1,0 +1,750 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Campus AI - Project Report</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 24mm 22mm 22mm;
+    }
+
+    :root {
+      color-scheme: light;
+      --ink: #1d2733;
+      --blue: #173b63;
+      --muted: #596675;
+      --rule: #aab7c4;
+      --pale: #eef3f8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 36px 52px;
+      color: var(--ink);
+      background: #fff;
+      font: 12pt/1.55 "Times New Roman", Times, serif;
+    }
+
+    h1, h2, h3, h4 {
+      color: var(--blue);
+      line-height: 1.25;
+      break-after: avoid;
+    }
+
+    h1 {
+      margin: 0 0 22px;
+      text-align: center;
+      font-size: 19pt;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    h2 {
+      margin: 26px 0 10px;
+      font-size: 15pt;
+    }
+
+    h3 {
+      margin: 20px 0 8px;
+      font-size: 13pt;
+    }
+
+    h4 {
+      margin: 14px 0 6px;
+      font-size: 12pt;
+    }
+
+    p { margin: 0 0 11px; text-align: justify; }
+    ul, ol { margin: 5px 0 13px 25px; padding-left: 14px; }
+    li { margin: 0 0 5px; }
+    a { color: #174e82; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .front-page {
+      min-height: 245mm;
+      position: relative;
+    }
+
+    .front-page h1 { margin-top: 16px; }
+    .center { text-align: center; }
+    .signature {
+      margin-top: 52px;
+      text-align: right;
+      white-space: pre-line;
+    }
+
+    .signature-line {
+      display: inline-block;
+      min-width: 210px;
+      border-top: 1px solid var(--ink);
+      padding-top: 6px;
+      text-align: center;
+    }
+
+    .page-break { break-before: page; page-break-before: always; }
+    .chapter { break-before: page; page-break-before: always; }
+    .small { color: var(--muted); font-size: 10.5pt; }
+
+    .toc, .figure-list, .table-list { list-style: none; margin-left: 0; padding-left: 0; }
+    .toc { columns: 2; column-gap: 28px; font-size: 10.5pt; line-height: 1.3; }
+    .toc li { break-inside: avoid; margin: 0 0 4px; }
+    .figure-list li, .table-list li { margin: 0 0 7px; }
+    .toc .sub { padding-left: 22px; }
+
+    table {
+      width: 100%;
+      margin: 13px 0 18px;
+      border-collapse: collapse;
+      font-size: 10pt;
+      break-inside: avoid;
+    }
+
+    th, td {
+      border: 1px solid var(--rule);
+      padding: 7px 9px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th { background: var(--pale); color: var(--blue); }
+
+    figure {
+      margin: 18px auto;
+      padding: 14px;
+      border: 1px solid var(--rule);
+      background: #fbfcfe;
+      text-align: center;
+      break-inside: avoid;
+    }
+
+    figure p { text-align: center; margin: 3px 0; }
+    figcaption { margin-top: 8px; color: var(--muted); font-size: 10.5pt; }
+    .flow { font-weight: bold; color: var(--blue); }
+    .note {
+      margin: 15px 0;
+      padding: 10px 13px;
+      border-left: 4px solid #b67a15;
+      background: #fff8e9;
+      font-size: 10.5pt;
+    }
+
+    .references li { margin-bottom: 9px; overflow-wrap: anywhere; }
+
+    @media screen {
+      body { box-shadow: 0 0 18px #dce2e8; margin-top: 24px; margin-bottom: 24px; }
+    }
+
+    @media print {
+      body { max-width: none; padding: 0; }
+      a { color: inherit; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <section class="front-page" id="declaration">
+    <h1>Candidate's Declaration</h1>
+    <p>
+      I hereby declare that the work presented in this project report, titled
+      <strong>“Smart Campus AI”</strong>, is submitted in partial fulfilment of the
+      requirements for the degree of Bachelor of Technology in Information Technology
+      at J.C. Bose University of Science and Technology, YMCA, Faridabad. The project
+      work was carried out under the supervision of Dr. Umesh.
+    </p>
+    <p>
+      I further declare that this report describes the project work undertaken for
+      this submission and that any material drawn from other sources has been
+      acknowledged in the references.
+    </p>
+    <div class="signature">
+      <span class="signature-line">Student's Signature</span>
+      Ritik Bhat
+      23001011053
+    </div>
+  </section>
+
+  <section class="front-page page-break" id="certificate">
+    <h1>Certificate</h1>
+    <p>
+      This is to certify that the project report titled <strong>“Smart Campus AI”</strong>,
+      submitted by <strong>Ritik Bhat (23001011053)</strong>, a student of the 6th
+      semester of Bachelor of Technology in Information Technology, J.C. Bose
+      University of Science and Technology, YMCA, Faridabad, is a record of project
+      work carried out under my supervision.
+    </p>
+    <p>
+      The report is submitted for academic evaluation during the January–June 2026
+      semester. The final acceptance and certification of this work are subject to
+      review by the project supervisor and the University.
+    </p>
+    <div class="signature">
+      <span class="signature-line">Supervisor's Signature</span>
+      Dr. Umesh
+      Associate Professor
+      Department of Computer Engineering
+    </div>
+  </section>
+
+  <section class="front-page page-break" id="acknowledgement">
+    <h1>Acknowledgement</h1>
+    <p>
+      I would like to express my sincere gratitude to my project supervisor,
+      <strong>Dr. Umesh</strong>, for his guidance, encouragement, and feedback
+      throughout the development of Smart Campus AI. His support helped shape the
+      project and bring its different campus workflows together.
+    </p>
+    <p>
+      I am also grateful to the faculty and staff of J.C. Bose University of Science
+      and Technology, YMCA, and to my family for their encouragement and cooperation.
+      I appreciate the open-source communities and documentation authors whose
+      resources supported the implementation of the web application and its
+      supporting services.
+    </p>
+    <div class="signature">
+      Ritik Bhat
+      23001011053
+    </div>
+  </section>
+
+  <section class="page-break" id="contents">
+    <h1>Table of Contents</h1>
+    <ul class="toc">
+      <li><a href="#declaration">Candidate's Declaration</a></li>
+      <li><a href="#certificate">Certificate</a></li>
+      <li><a href="#acknowledgement">Acknowledgement</a></li>
+      <li><a href="#figures">List of Figures</a></li>
+      <li><a href="#tables">List of Tables</a></li>
+      <li><a href="#chapter-1">Chapter 1: Introduction</a></li>
+      <li class="sub"><a href="#introduction">1.1 Introduction of the Project</a></li>
+      <li class="sub"><a href="#problem">1.2 Problem Statement</a></li>
+      <li class="sub"><a href="#objectives">1.3 Objectives of the Project</a></li>
+      <li class="sub"><a href="#learning">1.4 Learning from the Project</a></li>
+      <li><a href="#chapter-2">Chapter 2: Literature Review / Related Work</a></li>
+      <li class="sub"><a href="#related-work">2.1 Related Studies and Existing Systems</a></li>
+      <li><a href="#chapter-3">Chapter 3: Methodology</a></li>
+      <li class="sub"><a href="#architecture">3.1 System / Model Architecture</a></li>
+      <li class="sub"><a href="#data">3.2 Data and Data Collection</a></li>
+      <li class="sub"><a href="#tools">3.3 Tools and Technologies Used</a></li>
+      <li class="sub"><a href="#techniques">3.4 Algorithms and Techniques Implemented</a></li>
+      <li><a href="#chapter-4">Chapter 4: Implementation</a></li>
+      <li class="sub"><a href="#design">4.1 System Design</a></li>
+      <li class="sub"><a href="#modules">4.2 Module Description</a></li>
+      <li class="sub"><a href="#workflows">4.3 Workflows and Diagrams</a></li>
+      <li class="sub"><a href="#development">4.4 Development Process</a></li>
+      <li><a href="#chapter-5">Chapter 5: Results and Discussion</a></li>
+      <li class="sub"><a href="#setup">5.1 Experimental Setup</a></li>
+      <li class="sub"><a href="#metrics">5.2 Evaluation Metrics</a></li>
+      <li class="sub"><a href="#analysis">5.3 Results Analysis</a></li>
+      <li><a href="#chapter-6">Chapter 6: Conclusion and Future Work</a></li>
+      <li class="sub"><a href="#conclusion">6.1 Conclusion</a></li>
+      <li class="sub"><a href="#limitations">6.2 Limitations</a></li>
+      <li class="sub"><a href="#future">6.3 Future Scope</a></li>
+      <li><a href="#references">References</a></li>
+    </ul>
+    <p class="small">
+      The cover page is intentionally omitted; this report begins with the
+      candidate declaration.
+    </p>
+  </section>
+
+  <section class="page-break" id="figures">
+    <h1>List of Figures</h1>
+    <ul class="figure-list">
+      <li>Figure 3.1 — Layered system architecture</li>
+      <li>Figure 3.2 — Retrieval-augmented AI response flow</li>
+      <li>Figure 4.1 — Smart Campus AI functional modules</li>
+      <li>Figure 4.2 — Reminder and deadline notification flow</li>
+      <li>Figure 4.3 — Event registration and check-in flow</li>
+    </ul>
+  </section>
+
+  <section class="page-break" id="tables">
+    <h1>List of Tables</h1>
+    <ul class="table-list">
+      <li>Table 3.1 — Technology stack and responsibilities</li>
+      <li>Table 3.2 — Main operational data groups</li>
+      <li>Table 4.1 — Application modules and users</li>
+      <li>Table 5.1 — Automated test run summary</li>
+    </ul>
+  </section>
+
+  <main>
+    <section class="chapter" id="chapter-1">
+      <h1>Chapter 1: Introduction</h1>
+
+      <h2 id="introduction">1.1 Introduction of the Project</h2>
+      <p>
+        Smart Campus AI is a web-based student and campus services platform for
+        J.C. Bose University of Science and Technology, YMCA. It brings academic
+        planning, attendance, campus communication, events, reminders, and
+        administrative workflows into one application. The system includes
+        role-specific student, teacher, coordinator, administrator, hosteller, and
+        warden experiences, with access enforced by the relevant application and
+        server-side rules.
+      </p>
+      <p>
+        The application uses Next.js and React for its web interface and server
+        routes, with Supabase providing authentication, PostgreSQL persistence, and
+        real-time capabilities. Its AI assistant calls the Groq API and can ground
+        campus answers in retrieved knowledge-base content through a
+        Retrieval-Augmented Generation (RAG) pipeline. Supporting services include
+        email delivery and campus mapping. The application is designed as a
+        collection of connected workflows rather than as a standalone chatbot.
+      </p>
+
+      <h2 id="problem">1.2 Problem Statement</h2>
+      <p>
+        Campus information and services are often spread across separate portals,
+        messaging channels, and manual processes. Students may need to switch
+        between systems to check attendance, track deadlines, find campus
+        information, join events, or contact peers. Staff likewise handle repeated
+        approval and communication tasks across distinct workflows.
+      </p>
+      <p>
+        A fragmented service landscape can make information harder to find and
+        deadlines easier to miss. It also makes it difficult to connect campus
+        information with a student's current schedule and role. A unified system is
+        therefore needed to provide consistent access to academic and campus
+        services, preserve appropriate role boundaries, and support routine tasks
+        with automation and knowledge-grounded assistance.
+      </p>
+
+      <h2 id="objectives">1.3 Objectives of the Project</h2>
+      <ol>
+        <li>Provide a centralized web platform for academic and campus workflows.</li>
+        <li>Offer an AI assistant that can answer campus questions using retrieved knowledge when available.</li>
+        <li>Help students organize schedules, reminders, and deadlines.</li>
+        <li>Support attendance recording, reporting, and threshold alerts.</li>
+        <li>Enable campus communication, notices, and a unified notification view.</li>
+        <li>Support club and event discovery, registration, and attendance check-in.</li>
+        <li>Provide hostel services, including access requests, maintenance, dining, and outpass workflows.</li>
+        <li>Manage shared campus and hostel facility reservations with capacity controls.</li>
+        <li>Enable lost-and-found posts and private item-claim communication.</li>
+        <li>Apply role-aware access and data handling across student and staff workflows.</li>
+      </ol>
+
+      <h2 id="learning">1.4 Learning from the Project</h2>
+      <p>
+        The project provided practical experience in full-stack web development,
+        component-based user interfaces, API design, database modelling, user
+        authentication, access control, and integration with external services.
+        Building the application also involved managing persistent user state,
+        designing validation rules for business workflows, and handling asynchronous
+        communication with email, mapping, and AI services.
+      </p>
+      <p>
+        Implementing RAG provided experience with document chunking, text
+        embeddings, vector similarity search, and source-aware responses. The
+        project further required testing utility functions and workflow rules,
+        maintaining database schema scripts, debugging integration issues, and
+        coordinating a growing codebase using Git and GitHub.
+      </p>
+    </section>
+
+    <section class="chapter" id="chapter-2">
+      <h1>Chapter 2: Literature Review / Related Work</h1>
+      <h2 id="related-work">2.1 Related Studies and Existing Systems</h2>
+      <p>
+        Learning-management systems such as Moodle and Google Classroom primarily
+        support course delivery, learning materials, assignments, and classroom
+        communication. Collaboration platforms such as Microsoft Teams provide
+        messaging and meetings. Student information and enterprise systems manage
+        institutional records and administrative processes. These categories of
+        software address important parts of university operations, but they are
+        generally configured around different service domains.
+      </p>
+      <p>
+        Standalone conversational assistants can answer questions but may not be
+        connected to the actions a student needs to take, such as saving a
+        reminder, viewing an event ticket, or tracking a hostel request. Conversely,
+        conventional portals expose workflows but may require users to navigate
+        separate sections and understand where information is maintained.
+      </p>
+      <p>
+        Smart Campus AI combines a dashboard with modular academic and campus
+        workflows. Its distinguishing design goal is to place AI assistance,
+        planning, communication, attendance, events, and selected administrative
+        services in a shared application. The RAG feature can supply the assistant
+        with retrieved institutional context and show source excerpts, while
+        separate modules remain responsible for validated actions and persistent
+        records. This integration is intended to improve discoverability and
+        continuity; it does not replace the authoritative systems or staff
+        decisions of the institution.
+      </p>
+      <table>
+        <thead><tr><th>System category</th><th>Typical emphasis</th><th>Project relationship</th></tr></thead>
+        <tbody>
+          <tr><td>Learning-management systems</td><td>Courses, learning materials, assignments</td><td>Complementary; Smart Campus AI emphasizes broader campus workflows.</td></tr>
+          <tr><td>Student portals / ERP systems</td><td>Institutional records and administration</td><td>Potential source or integration target; not replaced by this prototype.</td></tr>
+          <tr><td>Messaging and collaboration platforms</td><td>Chat, groups, and announcements</td><td>Related to the project's campus chat, notices, and inbox features.</td></tr>
+          <tr><td>Standalone AI assistants</td><td>Conversational question answering</td><td>Extended here with campus context, source excerpts, and workflow-oriented actions.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="chapter" id="chapter-3">
+      <h1>Chapter 3: Methodology</h1>
+
+      <h2 id="architecture">3.1 System / Model Architecture</h2>
+      <p>
+        Smart Campus AI follows a client-server architecture. The browser renders
+        the application using React components within Next.js. Route handlers
+        provide the backend-for-frontend API layer, validate and process requests,
+        and communicate with Supabase or external services. Supabase stores
+        relational application data and supplies authentication and real-time
+        capabilities. The AI path adds an external language-model service and an
+        optional retrieval path over campus knowledge.
+      </p>
+
+      <figure>
+        <p class="flow">User / Staff Browser</p>
+        <p>↓</p>
+        <p class="flow">Next.js Interface — dashboards, forms, chat, and role panels</p>
+        <p>↓</p>
+        <p class="flow">Next.js Route Handlers — authentication, validation, and workflow logic</p>
+        <p>↓</p>
+        <p class="flow">Supabase Auth + PostgreSQL + Realtime</p>
+        <p>↘ &nbsp; AI services: embeddings / vector retrieval / Groq &nbsp; ↙</p>
+        <p class="flow">Email and mapping integrations, where applicable</p>
+        <figcaption>Figure 3.1 — Layered system architecture.</figcaption>
+      </figure>
+
+      <p>
+        The presentation layer contains dashboards and feature panels. The
+        application layer applies role checks and domain rules such as attendance
+        calculations, event registration validation, hostel assignment checks, and
+        booking capacity. The data layer stores user state and domain records in
+        PostgreSQL tables, with database policies and server-side access patterns
+        used to protect data. The intelligence layer retrieves relevant knowledge
+        chunks and uses the Groq chat-completion API to generate a response.
+      </p>
+
+      <h3>AI and retrieval flow</h3>
+      <p>
+        For eligible text queries, the server obtains an embedding using the
+        Hugging Face Inference API and the
+        <em>sentence-transformers/all-MiniLM-L6-v2</em> model. The resulting
+        384-dimensional vector is compared with vectors stored in the
+        <code>knowledge_chunks</code> table through a Supabase PostgreSQL RPC that
+        uses pgvector. Retrieved chunks are formatted with source metadata and
+        included in the system context sent to Groq. The response can include
+        numbered sources and expandable excerpts in the interface. If the
+        embedding service is unavailable or not configured, the AI route continues
+        without retrieved context.
+      </p>
+
+      <figure>
+        <p class="flow">Campus question</p>
+        <p>→ Generate query embedding → Retrieve matching knowledge chunks</p>
+        <p>→ Add retrieved context and conversation context to the prompt</p>
+        <p>→ Groq generates response → Return answer and available source metadata</p>
+        <figcaption>Figure 3.2 — Retrieval-augmented AI response flow.</figcaption>
+      </figure>
+
+      <h2 id="data">3.2 Data and Data Collection</h2>
+      <p>
+        The application does not train a machine-learning model on a single
+        experimental dataset. It uses operational records entered by users or
+        administrators and a separately managed knowledge base for retrieval.
+        Data is stored in Supabase PostgreSQL tables and, for selected dashboard
+        state, the per-user <code>user_state</code> store. Access to sensitive
+        records is intended to be limited by authenticated identity, role, and
+        database policy.
+      </p>
+      <table>
+        <thead><tr><th>Data group</th><th>Examples</th><th>Use in the application</th></tr></thead>
+        <tbody>
+          <tr><td>Identity and profile</td><td>Student and staff profiles, verification status, role information</td><td>Authentication, dashboards, and role-aware access.</td></tr>
+          <tr><td>Academic records</td><td>Subjects, attendance entries, schedules, notices, reminders, deadlines</td><td>Academic tracking, planning, and student/staff views.</td></tr>
+          <tr><td>Campus activity</td><td>Events, registrations, check-ins, clubs, messages, issue reports</td><td>Participation, communication, and campus service workflows.</td></tr>
+          <tr><td>Hostel and facility records</td><td>Hostel assignments, maintenance requests, menus, outpasses, facility schedules and bookings</td><td>Resident services, staff review, and capacity-aware reservations.</td></tr>
+          <tr><td>Knowledge base</td><td>Institutional documents represented as text chunks, metadata, and embeddings</td><td>Retrieval-grounded answers in the AI assistant.</td></tr>
+        </tbody>
+      </table>
+      <p>
+        Knowledge content must be supplied and maintained by authorized project
+        administrators. The usefulness of a retrieved response therefore depends
+        on the accuracy, currency, and coverage of the content loaded into the
+        knowledge base.
+      </p>
+
+      <h2 id="tools">3.3 Tools and Technologies Used</h2>
+      <table>
+        <thead><tr><th>Area</th><th>Technology</th><th>Responsibility</th></tr></thead>
+        <tbody>
+          <tr><td>Web framework</td><td>Next.js 16.2, React 19.2</td><td>Application pages, interactive UI, and route handlers.</td></tr>
+          <tr><td>Styling</td><td>Tailwind CSS 4 and application styles</td><td>Responsive interface and visual presentation.</td></tr>
+          <tr><td>Authentication and database</td><td>Supabase Auth, PostgreSQL, Supabase Realtime</td><td>User identity, relational data, and real-time application capabilities.</td></tr>
+          <tr><td>AI assistant</td><td>Groq SDK and Groq chat models</td><td>Conversational response generation and multimodal request support.</td></tr>
+          <tr><td>RAG embeddings</td><td>Hugging Face Inference API, MiniLM-L6-v2, pgvector</td><td>Text embeddings, similarity retrieval, and knowledge-grounded prompts.</td></tr>
+          <tr><td>Notifications and email</td><td>Browser notifications, Nodemailer, scheduled reminder-job routes</td><td>In-app notification support and reminder/deadline email delivery.</td></tr>
+          <tr><td>Maps and scanning</td><td>Google Maps API, ZXing browser library, QR-code components</td><td>Campus location display and event ticket scanning.</td></tr>
+          <tr><td>Development and tests</td><td>Node.js, npm, ESLint, Node test runner, Git, GitHub</td><td>Development scripts, static checks, unit tests, and source control.</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="techniques">3.4 Algorithms and Techniques Implemented</h2>
+      <ol>
+        <li><strong>Retrieval-Augmented Generation:</strong> campus knowledge is chunked, embedded, and retrieved by vector similarity; relevant sourced passages are added to the AI prompt.</li>
+        <li><strong>Structured action detection:</strong> supported reminder, deadline, navigation, and club intents are parsed, validated, and confirmed by application logic.</li>
+        <li><strong>Role-based access control:</strong> dashboards and server routes enforce role and record scope, including block-scoped warden access.</li>
+        <li><strong>Attendance aggregation:</strong> records are grouped by student and subject to produce histories, percentages, and threshold indicators.</li>
+        <li><strong>Reminder scheduling:</strong> durable email jobs are processed server-side; browser notifications are best-effort.</li>
+        <li><strong>Capacity-aware booking:</strong> facility availability is generated from recurring schedules and validated against capacity and booking rules.</li>
+        <li><strong>Event check-in:</strong> registrations receive ticket identifiers for QR-based check-in, with validation intended to prevent repeat check-in for a registration.</li>
+      </ol>
+    </section>
+
+    <section class="chapter" id="chapter-4">
+      <h1>Chapter 4: Implementation</h1>
+
+      <h2 id="design">4.1 System Design</h2>
+      <p>
+        The project is organized as a single Next.js repository with shared
+        frontend components, API route handlers, server-side domain helpers,
+        reusable campus utilities, and SQL schema scripts. The main dashboard
+        serves as the entry point for student-facing functionality. Separate
+        portal pages provide focused experiences for hostel and club workflows,
+        while role panels expose teacher and administrator operations.
+      </p>
+      <p>
+        The code separates interface concerns from domain rules where practical.
+        Components collect input and display results; route handlers authenticate
+        requests and connect UI actions to server helpers; shared utilities
+        validate inputs and calculate derived values. Database schemas define
+        dedicated tables and policies for major areas such as chat, attendance,
+        events, hostel services, facility bookings, and knowledge retrieval.
+      </p>
+
+      <figure>
+        <p class="flow">Student Dashboard</p>
+        <p>Academic planning · attendance · reminders · inbox · chat · events</p>
+        <p>↙ &nbsp; Hostel Portal &nbsp; | &nbsp; Club Portal &nbsp; | &nbsp; Staff / Admin Panels &nbsp; ↘</p>
+        <p>Hostel services · event management · approvals · notices · analytics</p>
+        <figcaption>Figure 4.1 — Smart Campus AI functional modules.</figcaption>
+      </figure>
+
+      <h2 id="modules">4.2 Module Description</h2>
+      <table>
+        <thead><tr><th>Module</th><th>Primary functions</th><th>Typical users</th></tr></thead>
+        <tbody>
+          <tr><td>Authentication and profiles</td><td>Sign-in, account profile, verification, role resolution</td><td>Students, teachers, staff</td></tr>
+          <tr><td>AI assistant and knowledge base</td><td>Campus questions, context retrieval, source-aware answers, supported structured actions</td><td>Authenticated users</td></tr>
+          <tr><td>Planner and reminders</td><td>Weekly planning, deadlines, reminders, email job synchronization</td><td>Students</td></tr>
+          <tr><td>Attendance and academic panels</td><td>Attendance entry, subject mapping, summaries, threshold indicators</td><td>Students, teachers, administrators</td></tr>
+          <tr><td>Campus communication</td><td>Social chat, notices, notifications, unified inbox</td><td>Students and staff</td></tr>
+          <tr><td>Events and clubs</td><td>Event publication and review, registration, ticket history, QR check-in</td><td>Students, coordinators, administrators</td></tr>
+          <tr><td>Hostel services</td><td>Hosteller access requests, block/room assignment, maintenance, mess menus and ratings, leave/outpass review</td><td>Hostellers, wardens, hostel administrators</td></tr>
+          <tr><td>Facility bookings</td><td>Recurring availability, time-slot reservations, capacity checks, cancellations</td><td>Students, facility administrators</td></tr>
+          <tr><td>Lost and found</td><td>Found-item posts, private claims, private claim responses</td><td>Students</td></tr>
+          <tr><td>Issues and analytics</td><td>Issue reporting and timelines, dashboard insights, attention summaries</td><td>Students, teachers, administrators</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="workflows">4.3 Workflows and Diagrams</h2>
+      <h3>Reminder and deadline workflow</h3>
+      <p>
+        A user creates a reminder or deadline in the dashboard. The application
+        validates its details and persists the user's state. Scheduled email
+        delivery is synchronized to a durable job record and processed by the
+        reminder-job endpoint when a configured background trigger runs. Browser
+        notifications can also be scheduled in the client but depend on browser
+        permissions and availability.
+      </p>
+      <figure>
+        <p class="flow">Create reminder / deadline → Validate and save → Sync email job</p>
+        <p>→ Background trigger calls processor → Email delivery → Job status recorded</p>
+        <figcaption>Figure 4.2 — Reminder and deadline notification flow.</figcaption>
+      </figure>
+
+      <h3>Event registration and check-in workflow</h3>
+      <p>
+        A student views an event and registers during the permitted registration
+        period. The event ticket is associated with that registration. On the
+        event date, an authorized coordinator or administrator scans the ticket;
+        the server checks the event and registration details before recording the
+        attendance check-in.
+      </p>
+      <figure>
+        <p class="flow">Published event → Student registration → Per-registration ticket</p>
+        <p>→ Authorized scanner validates ticket → Check-in recorded once</p>
+        <figcaption>Figure 4.3 — Event registration and check-in flow.</figcaption>
+      </figure>
+
+      <h3>Other representative workflows</h3>
+      <ul>
+        <li><strong>Attendance:</strong> teacher records attendance → validated records are stored → student and staff views display subject-level histories and summaries.</li>
+        <li><strong>Hostel maintenance:</strong> hosteller submits a request → assigned-block staff review and post updates → the requester tracks the request timeline.</li>
+        <li><strong>Facility booking:</strong> an administrator publishes recurring availability → a student selects an eligible date and slot → the server checks capacity and access rules before confirming the reservation.</li>
+        <li><strong>Lost and found:</strong> a student posts a found-item description → another student submits a private claim → claim communication remains separate from the public item listing.</li>
+      </ul>
+
+      <h2 id="development">4.4 Development Process (Frontend and Backend)</h2>
+      <h3>Frontend development</h3>
+      <p>
+        The frontend is built from React components rendered by Next.js. The main
+        dashboard coordinates navigation and user state, while focused components
+        implement planning, attendance, chat, events, hostel services, facility
+        bookings, and lost-and-found interactions. Interfaces reflect the
+        authenticated user's role and provide status, validation, and workflow
+        feedback.
+      </p>
+
+      <h3>Backend and database development</h3>
+      <p>
+        Next.js route handlers provide application APIs for authentication,
+        attendance, AI chat, events, hostel workflows, facility reservations,
+        knowledge management, and reminder processing. Server-side helpers
+        centralize domain-specific validation and service access. Supabase SQL
+        files define the tables, indexes, functions, and access policies required
+        by the feature areas; those scripts must be applied to the target Supabase
+        project before the corresponding database-backed functionality is
+        available.
+      </p>
+
+      <h3>Testing and development checks</h3>
+      <p>
+        The repository uses Node.js's built-in test runner for unit tests covering
+        action parsing, RAG formatting, planner calculations, attendance
+        summaries, issue workflows, inbox behavior, event check-in, facility
+        booking validation, hostel services, lost-and-found rules, reminders, and
+        role helpers. ESLint and the Next.js production build are provided as
+        separate project scripts.
+      </p>
+    </section>
+
+    <section class="chapter" id="chapter-5">
+      <h1>Chapter 5: Results and Discussion</h1>
+
+      <h2 id="setup">5.1 Experimental Setup</h2>
+      <p>
+        Development and functional checks were performed in a Windows
+        development environment using Node.js and npm. The application is
+        intended to run in a modern web browser and can be started locally using
+        the repository's development script. Backend-dependent workflows require
+        valid Supabase configuration and, where applicable, configured AI,
+        email, embedding, or mapping credentials.
+      </p>
+      <p>
+        The repository's automated checks use the Node.js test runner and
+        project-specific utility and workflow tests. Manual testing should also
+        verify complete user journeys in the browser, including authentication,
+        role-specific access, API/database integration, notification behavior,
+        and responsive layouts. No performance benchmark or production-scale
+        load test is claimed in this report.
+      </p>
+
+      <h2 id="metrics">5.2 Evaluation Metrics</h2>
+      <p>The project can be evaluated using the following measurable criteria:</p>
+      <ol>
+        <li>Functional correctness of each user workflow and its validation rules.</li>
+        <li>Authorization correctness, including access to only the records permitted for each role.</li>
+        <li>Attendance summary accuracy against known sample records.</li>
+        <li>Reminder-job processing and delivery status under configured background scheduling.</li>
+        <li>Event ticket validation and prevention of duplicate check-in.</li>
+        <li>Facility booking capacity and eligibility enforcement.</li>
+        <li>AI response relevance and whether displayed source excerpts support grounded answers.</li>
+        <li>API error handling, reliability, and integration behavior with external services.</li>
+        <li>Responsive usability and accessibility across supported browsers and screen sizes.</li>
+      </ol>
+
+      <h2 id="analysis">5.3 Results Analysis</h2>
+      <p>
+        The implemented application brings together a broad set of student and
+        campus workflows: AI-assisted support, planning and reminders, attendance,
+        chat and notices, events and clubs, hostel services, facility reservations,
+        and lost-and-found. Dedicated route handlers, shared domain utilities,
+        and database schema scripts provide the foundations for these connected
+        features. The design supports role-specific flows rather than exposing
+        every operation to every user.
+      </p>
+      <p>
+        An automated test run was performed for this report using
+        <code>npm test</code>. It reported 69 tests: 68 passed and 1 failed. The
+        failing test is
+        <code>buildStudentAttendanceReport groups course history and percentage</code>.
+        For its sample containing two present records and one absent record, the
+        test expects an overall percentage of 66.7%, while the implementation
+        returned 75%. This discrepancy remains an item to investigate; therefore,
+        the current automated test run should not be represented as fully passing.
+      </p>
+      <table>
+        <thead><tr><th>Automated test run</th><th>Observed result</th></tr></thead>
+        <tbody>
+          <tr><td>Total tests</td><td>69</td></tr>
+          <tr><td>Passed</td><td>68</td></tr>
+          <tr><td>Failed</td><td>1</td></tr>
+          <tr><td>Outstanding finding</td><td>Attendance percentage calculation differs from the unit-test expectation (75% returned; 66.7% expected).</td></tr>
+        </tbody>
+      </table>
+      <p>
+        The test suite demonstrates coverage of key domain rules but does not by
+        itself prove end-to-end reliability, data quality, or production
+        readiness. AI response quality depends on model behavior and the
+        knowledge-base content; notification delivery depends on external
+        configuration; and deployment scalability requires separate operational
+        testing.
+      </p>
+    </section>
+
+    <section class="chapter" id="chapter-6">
+      <h1>Chapter 6: Conclusion and Future Work</h1>
+
+      <h2 id="conclusion">6.1 Conclusion</h2>
+      <p>
+        Smart Campus AI demonstrates how a modern web application can bring
+        academic support and campus workflows together in one platform. Its
+        combination of role-aware dashboards, persistent Supabase data,
+        automation, real-time communication, and a knowledge-grounded AI
+        assistant provides a foundation for a more discoverable digital campus
+        experience.
+      </p>
+      <p>
+        Conversational assistance is kept distinct from authoritative actions:
+        workflows are validated by dedicated services, while retrieved sources
+        provide context for informational answers. Further testing, data
+        governance, and deployment work are needed before institutional-scale use.
+      </p>
+
+      <h2 id="limitations">6.2 Limitations</h2>
+      <ol>
+        <li>The application depends on Supabase and external AI, embedding, email, and mapping services for relevant features.</li>
+        <li>RAG answer quality depends on the accuracy and freshness of indexed institutional content and on retrieval/model behavior.</li>
+        <li>Browser notifications are best-effort and require browser permission; scheduled email delivery needs a configured background trigger.</li>
+        <li>The automated test run currently has one failing attendance percentage test that requires investigation and resolution.</li>
+        <li>Performance, accessibility, and scalability have not been established through formal benchmarks or production-scale testing.</li>
+        <li>Institutional deployment requires administrators to configure environment secrets, database schemas, policies, and operational monitoring.</li>
+      </ol>
+
+      <h2 id="future">6.3 Future Scope</h2>
+      <ol>
+        <li>Resolve the attendance percentage discrepancy and add edge-case tests.</li>
+        <li>Expand end-to-end and authorization tests; evaluate AI grounding with campus questions, source checks, and user feedback.</li>
+        <li>Improve monitoring and retries for reminder jobs and external services, and add push notifications.</li>
+        <li>Explore indoor navigation and ERP integration; improve multilingual and accessible mobile use; conduct load, security, and deployment-readiness testing.</li>
+      </ol>
+    </section>
+  </main>
+
+  <section class="chapter" id="references">
+    <h1>References</h1>
+    <ol class="references">
+      <li><a href="https://github.com/r0hanbhat/Smart-campus-ai">Smart Campus AI source repository</a>. Source code, README, test suite, and Supabase schema scripts.</li>
+      <li><a href="https://nextjs.org/docs">Next.js Documentation</a>. Framework concepts and route handler documentation.</li>
+      <li><a href="https://react.dev/learn">React Documentation</a>. Component-based user interface development.</li>
+      <li><a href="https://supabase.com/docs">Supabase Documentation</a>. Authentication, PostgreSQL, client libraries, and Realtime.</li>
+      <li><a href="https://console.groq.com/docs">Groq API Documentation</a>. Chat completion API integration.</li>
+      <li><a href="https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2">Hugging Face model card: sentence-transformers/all-MiniLM-L6-v2</a>. Text embedding model used by the RAG implementation.</li>
+      <li><a href="https://github.com/pgvector/pgvector">pgvector project documentation</a>. Vector storage and similarity search for PostgreSQL.</li>
+      <li><a href="https://www.postgresql.org/docs/">PostgreSQL Documentation</a>. Relational database reference.</li>
+      <li><a href="https://tailwindcss.com/docs">Tailwind CSS Documentation</a>. Utility-first styling framework reference.</li>
+      <li><a href="https://developers.google.com/maps/documentation">Google Maps Platform Documentation</a>. Map integration reference.</li>
+    </ol>
+  </section>
+</body>
+</html>

@@ -1,5 +1,5 @@
-﻿'use client';
-import { useState, useEffect, useMemo, useRef } from 'react';
+'use client';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { GoogleMap, LoadScript, Marker, Polyline } from '@react-google-maps/api';
 import { useAuth } from './contexts/AuthContext.jsx';
 import Link from 'next/link';
@@ -9,6 +9,10 @@ import { AttentionTab, DashboardOverviewTab, ProfileTab } from './components/Ana
 import { StudentAttendanceTab } from './components/AttendancePanels.jsx';
 import IssueReportingTab from './components/IssueReportingTab.jsx';
 import NoticeBoard, { NoticeBellBadge } from './components/NoticeBoard.jsx';
+import UnifiedInbox from './components/UnifiedInbox.jsx';
+import EventActivityHistoryPanel, { EventTicketButton } from './components/EventActivityHistoryPanel.jsx';
+import FacilityBookingPanel from './components/FacilityBookingPanel.jsx';
+import LostAndFoundPanel from './components/LostAndFoundPanel.jsx';
 import CampusChatPanel from './components/CampusChatPanel.jsx';
 import { AdminDashboard, TeacherDashboard, TeacherPendingPanel } from './components/RolePanels.jsx';
 import { SmartPlannerTab } from './components/SmartPlannerTab.jsx';
@@ -24,10 +28,16 @@ export default function Home() {
     const { user, loading: authLoading, signOut } = useAuth();
     const [supabase] = useState(() => createClient());
     const [activeTab, setActiveTab] = useState('dashboard');
+    const [inboxUnreadCount, setInboxUnreadCount] = useState(0);
     const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
     const [chatMode, setChatMode] = useState('assistant');
-    const [clubEventsTab, setClubEventsTab] = useState('open'); // 'open' | 'live'
-    const [clubEventsData, setClubEventsData] = useState({ open_registration: [], upcoming_live: [], loaded: false });
+    const [campusChatInitialView, setCampusChatInitialView] = useState('chat');
+    const [clubEventsTab, setClubEventsTab] = useState('open'); // 'open' | 'upcoming' | 'enrolled' | 'history'
+    const [clubEventsData, setClubEventsData] = useState({ events: [], open_registration: [], upcoming: [], enrolled: [], loaded: false });
+    const [clubEventsLoading, setClubEventsLoading] = useState(false);
+    const [clubEventsError, setClubEventsError] = useState('');
+    const [eventRegistrationError, setEventRegistrationError] = useState('');
+    const [registeringEventId, setRegisteringEventId] = useState('');
     const [input, setInput] = useState('');
     const [uploadedImage, setUploadedImage] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -343,15 +353,46 @@ export default function Home() {
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
-    // Auto-fetch enrolled events on mount so the header badge shows the correct count
+    const loadPublishedEvents = useCallback(async () => {
+        if (!user || !isDataLoaded) return;
+        setClubEventsLoading(true);
+        setClubEventsError('');
+        try {
+            const authHeaders = await createSupabaseAuthHeaders(supabase);
+            const response = await fetch('/api/events/published', {
+                headers: authHeaders,
+                credentials: 'same-origin',
+                cache: 'no-store',
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || 'Could not load published events.');
+            }
+            setClubEventsData({ ...data, loaded: true });
+        } catch (error) {
+            setClubEventsError(error instanceof Error ? error.message : 'Could not load published events.');
+        } finally {
+            setClubEventsLoading(false);
+        }
+    }, [user, isDataLoaded, supabase]);
+
     useEffect(() => {
-        if (!user || !isDataLoaded || clubEventsData.loaded) return;
-        createSupabaseAuthHeaders(supabase)
-            .then(h => fetch('/api/events/published', { headers: h, credentials: 'same-origin' }))
-            .then(r => r.ok ? r.json() : null)
-            .then(d => { if (d) setClubEventsData({ ...d, loaded: true }); })
-            .catch(() => {});
-    }, [user, isDataLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
+        void loadPublishedEvents();
+    }, [loadPublishedEvents]);
+
+    useEffect(() => {
+        if (activeTab !== 'events') return undefined;
+        void loadPublishedEvents();
+        const refreshTimer = window.setInterval(() => {
+            if (!document.hidden) void loadPublishedEvents();
+        }, 30000);
+        const refreshOnFocus = () => void loadPublishedEvents();
+        window.addEventListener('focus', refreshOnFocus);
+        return () => {
+            window.clearInterval(refreshTimer);
+            window.removeEventListener('focus', refreshOnFocus);
+        };
+    }, [activeTab, loadPublishedEvents]);
     const handleSend = async () => {
         if ((!input.trim() && !uploadedImage) || loading || !user)
             return;
@@ -994,34 +1035,46 @@ export default function Home() {
     const handleEventRegister = async (event, onSuccess) => {
         if (event.user_registered) return;
         if (!userProfile?.roll_number || !userProfile?.course || !userProfile?.branch) {
-            alert('Please complete your profile (roll no, course, branch) in the Profile tab to register for events.');
+            setEventRegistrationError('Complete your profile (roll number, course, and branch) before registering.');
             return;
         }
-        const res = await fetch(`/api/events/${event.id}/register`, { method: 'POST' });
-        if (!res.ok) return;
-        const data = await res.json();
-        // Run parent state update
-        onSuccess();
-        // Auto-add reminder
-        const eventInfo = data.event || event;
-        const reminderId = `event-${eventInfo.id}`;
-        const newReminder = {
-            id: reminderId,
-            eventName: eventInfo.title,
-            date: eventInfo.proposed_date,
-            time: eventInfo.time_start || '09:00',
-            source: 'event_registration',
-            offsets: [24, 2, 0],
-        };
-        upsertReminder(newReminder);
-        void scheduleNotificationForReminder(newReminder);
-        void sendImmediateCreationEmail({
-            itemName: eventInfo.title,
-            itemType: 'reminder',
-            date: eventInfo.proposed_date,
-            time: eventInfo.time_start || '09:00',
-            email: user?.email || '',
-        });
+        setEventRegistrationError('');
+        setRegisteringEventId(event.id);
+        try {
+            const authHeaders = await createSupabaseAuthHeaders(supabase);
+            const response = await fetch(`/api/events/${event.id}/register`, {
+                method: 'POST',
+                headers: authHeaders,
+                credentials: 'same-origin',
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.error || 'Could not register for this event.');
+            }
+            onSuccess();
+            const eventInfo = data.event || event;
+            const newReminder = {
+                id: `event-${eventInfo.id}`,
+                eventName: eventInfo.title,
+                date: eventInfo.proposed_date,
+                time: eventInfo.time_start || '09:00',
+                source: 'event_registration',
+                offsets: [24, 2, 0],
+            };
+            upsertReminder(newReminder);
+            void scheduleNotificationForReminder(newReminder);
+            void sendImmediateCreationEmail({
+                itemName: eventInfo.title,
+                itemType: 'reminder',
+                date: eventInfo.proposed_date,
+                time: eventInfo.time_start || '09:00',
+                email: user?.email || '',
+            });
+        } catch (error) {
+            setEventRegistrationError(error instanceof Error ? error.message : 'Could not register for this event.');
+        } finally {
+            setRegisteringEventId('');
+        }
     };
     const handleRemoveReminder = (reminderId) => {
         cancelScheduledNotification(reminderId);
@@ -1062,6 +1115,11 @@ export default function Home() {
     const selectTab = (tab) => {
         setActiveTab(tab);
         setIsNavMenuOpen(false);
+    };
+    const openCampusChatAlerts = () => {
+        setCampusChatInitialView('notifications');
+        setChatMode('campus');
+        selectTab('chat');
     };
     const savePlannerEntry = (entryInput) => {
         const nextEntry = normalizePlannerEntry(entryInput);
@@ -1206,7 +1264,7 @@ export default function Home() {
             <p className="mt-5 max-w-2xl text-sm leading-7 text-white/70 sm:text-base">
               Student, teacher, and admin access each have their own flow now. Use the role cards to open the exact login or signup page you need.
             </p>
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
               <Link href="/auth?role=student&mode=signup" className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5 transition hover:-translate-y-1 hover:bg-white/10">
                 <div className="text-xs uppercase tracking-[0.2em] text-cyan-200/70">Student</div>
                 <div className="mt-3 text-xl font-semibold text-white">Student Signup</div>
@@ -1226,6 +1284,11 @@ export default function Home() {
                 <div className="text-xs uppercase tracking-[0.2em] text-purple-200/80">Club</div>
                 <div className="mt-3 text-xl font-semibold text-white">Club Login</div>
                 <p className="mt-2 text-sm leading-6 text-white/65">Sign in with your Club Login ID and password to submit and track event proposals.</p>
+              </Link>
+              <Link href="/hostel" className="rounded-[1.5rem] border border-cyan-300/20 bg-cyan-500/10 p-5 transition hover:-translate-y-1 hover:bg-cyan-500/15">
+                <div className="text-xs uppercase tracking-[0.2em] text-cyan-200/80">Hostel</div>
+                <div className="mt-3 text-xl font-semibold text-white">Hostel Portal</div>
+                <p className="mt-2 text-sm leading-6 text-white/65">Wardens and hostellers can sign in to view their assigned blocks and rooms.</p>
               </Link>
             </div>
           </div>
@@ -1260,6 +1323,13 @@ export default function Home() {
                   <div className="mt-1 text-sm text-white/60">Sign in with your Club Login ID to submit and manage event proposals.</div>
                 </div>
                 <span className="text-purple-300">Open</span>
+              </Link>
+              <Link href="/hostel" className="flex items-center justify-between rounded-[1.3rem] border border-cyan-400/20 bg-cyan-500/10 px-5 py-4 transition hover:bg-cyan-500/15">
+                <div>
+                  <div className="text-sm font-semibold text-white">Hostel Portal</div>
+                  <div className="mt-1 text-sm text-white/60">Warden and hosteller sign-in with block and room details.</div>
+                </div>
+                <span className="text-cyan-200">Open</span>
               </Link>
             </div>
             <div className="mt-8 rounded-[1.4rem] border border-white/10 bg-white/5 p-5">
@@ -1351,7 +1421,15 @@ export default function Home() {
               {APP_TABS.map((tab) => (<button key={tab} onClick={() => selectTab(tab)} className={`rounded-[1rem] px-4 py-3 text-left text-sm font-medium transition flex items-center justify-between gap-2 ${activeTab === tab ? 'campus-button text-white' : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'}`}>
                   <span>{TAB_LABELS[tab]}</span>
                   {tab === 'notices' && <NoticeBellBadge />}
+                  {tab === 'inbox' && inboxUnreadCount > 0 && (
+                    <span className="inline-flex min-w-[20px] items-center justify-center rounded-full bg-sky-500 px-2 py-0.5 text-[11px] font-bold text-slate-950">
+                      {inboxUnreadCount}
+                    </span>
+                  )}
                 </button>))}
+              <Link href="/hostel" onClick={() => setIsNavMenuOpen(false)} className="rounded-[1rem] bg-cyan-500/10 px-4 py-3 text-left text-sm font-medium text-cyan-100 transition hover:bg-cyan-500/20">
+                Hostel Portal
+              </Link>
             </div>
           </div>
         </div>)}
@@ -1366,7 +1444,7 @@ export default function Home() {
               <button onClick={() => setChatMode('assistant')} className={`rounded-[1rem] px-5 py-3 text-sm font-medium transition ${chatMode === 'assistant' ? 'campus-button text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'}`}>
                 AI Assistant
               </button>
-              <button onClick={() => setChatMode('campus')} className={`rounded-[1rem] px-5 py-3 text-sm font-medium transition ${chatMode === 'campus' ? 'campus-button text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'}`}>
+              <button onClick={() => { setCampusChatInitialView('chat'); setChatMode('campus'); }} className={`rounded-[1rem] px-5 py-3 text-sm font-medium transition ${chatMode === 'campus' ? 'campus-button text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'}`}>
                 Campus Chat
               </button>
             </div>
@@ -1396,14 +1474,21 @@ export default function Home() {
                         </div>
                       </div>
                       {msg.role === 'assistant' && msg.sources?.length > 0 && (
-                        <div className="flex justify-start mt-1 ml-2">
-                          <div className="flex flex-wrap gap-1.5 items-center">
-                            <span className="text-[10px] text-white/35 uppercase tracking-widest">?? Based on:</span>
+                        <div className="ml-2 mt-2 max-w-[80%] rounded-2xl border border-cyan-400/15 bg-cyan-500/[0.04] p-3">
+                          <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-cyan-200/65">Answer sources</div>
+                          <div className="space-y-2">
                             {msg.sources.map((src, si) => (
-                              <span key={si} className="inline-flex items-center gap-1 rounded-full border border-cyan-400/20 bg-cyan-500/10 px-2.5 py-0.5 text-[10px] font-medium text-cyan-300">
-                                {src.title || src.source}
-                                <span className="text-cyan-400/50">� {Math.round((src.similarity || 0) * 100)}%</span>
-                              </span>
+                              <details key={`${src.source}-${si}`} className="rounded-xl border border-white/10 bg-white/[0.03]">
+                                <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-3 py-2 text-xs text-cyan-100">
+                                  <span className="font-medium">[{si + 1}] {src.title || src.source || 'Campus knowledge source'}</span>
+                                  {src.category && <span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-white/45">{src.category}</span>}
+                                </summary>
+                                {src.excerpt && (
+                                  <p className="border-t border-white/10 px-3 py-2 text-xs leading-5 text-white/65">
+                                    {src.excerpt}{src.excerpt.length >= 420 ? '…' : ''}
+                                  </p>
+                                )}
+                              </details>
                             ))}
                           </div>
                         </div>
@@ -1450,7 +1535,7 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              </div>) : (<CampusChatPanel userId={user.id} userEmail={user.email || ''}/>)}
+              </div>) : (<CampusChatPanel userId={user.id} userEmail={user.email || ''} initialView={campusChatInitialView}/>)}
           </div>)}
 
         {activeTab === 'planner' && (<SmartPlannerTab attentionLevel={attentionLevel} attendedEventsCount={attendedEventsCount} focusRatio={focusRatio} guidance={plannerData.guidance} highRiskItems={plannerData.highRiskItems} onDeletePlannerEntry={removePlannerEntry} onItemAction={handlePlannerItemAction} onSavePlannerEntry={savePlannerEntry} onSelectTab={selectTab} onTogglePlannerEntryCompletion={togglePlannerEntryCompletion} openDeadlinesCount={openDeadlinesCount} plannerWeekData={plannerWeekData} todayItems={plannerData.todayItems} upcomingRemindersCount={upcomingRemindersCount} weekItems={plannerData.weekItems}/>)}
@@ -1462,6 +1547,23 @@ export default function Home() {
                 <NoticeBoard role="student" />
             </div>
         )}
+
+        {activeTab === 'inbox' && (
+            <UnifiedInbox
+                userId={user.id}
+                reminders={reminders}
+                deadlines={deadlines}
+                issues={reportedIssues}
+                supabase={supabase}
+                onSelectTab={selectTab}
+                onOpenChat={openCampusChatAlerts}
+                onUnreadCountChange={setInboxUnreadCount}
+            />
+        )}
+
+        {activeTab === 'facilities' && <FacilityBookingPanel scope="campus" />}
+
+        {activeTab === 'lostAndFound' && <LostAndFoundPanel />}
 
         {activeTab === 'issues' && (<IssueReportingTab reportedIssues={reportedIssues} issueNotificationPreferences={issueNotificationPreferences} issuesLoading={issuesLoading} issueError={issueError} onCreateIssue={createIssueReport} onUpdateIssuePreferences={updateIssuePreferences} onRateIssueSatisfaction={rateIssueSatisfaction} onRefreshIssues={refreshIssueCenter}/>)}
         {activeTab === 'events' && (<div className="space-y-4">
@@ -1478,18 +1580,28 @@ export default function Home() {
                 <button onClick={() => setClubEventsTab('enrolled')} className={`rounded-[1rem] px-4 py-2.5 text-sm font-medium transition ${clubEventsTab === 'enrolled' ? 'campus-button text-white' : 'text-white/65 hover:bg-white/5 hover:text-white'}`}>
                   ✅ My Enrollments
                 </button>
+                <button onClick={() => setClubEventsTab('history')} className={`rounded-[1rem] px-4 py-2.5 text-sm font-medium transition ${clubEventsTab === 'history' ? 'campus-button text-white' : 'text-white/65 hover:bg-white/5 hover:text-white'}`}>
+                  🕘 Activity History
+                </button>
               </div>
-              <button onClick={async () => {
-                const authHdrs = await createSupabaseAuthHeaders(supabase);
-                const res = await fetch('/api/events/published', { headers: authHdrs, credentials: 'same-origin' });
-                if (res.ok) { const d = await res.json(); setClubEventsData({ ...d, loaded: true }); }
-              }} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-white">Refresh</button>
+              <button onClick={() => void loadPublishedEvents()} disabled={clubEventsLoading} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-sm text-white disabled:opacity-50">
+                {clubEventsLoading ? 'Refreshing…' : 'Refresh'}
+              </button>
             </div>
 
-            {!clubEventsData.loaded && activeTab === 'events' && (() => {
-              createSupabaseAuthHeaders(supabase).then(h => fetch('/api/events/published', { headers: h, credentials: 'same-origin' })).then(r => r.json()).then(d => setClubEventsData({ ...d, loaded: true })).catch(() => {});
-              return null;
-            })()}
+            {clubEventsError && (
+              <div role="alert" className="campus-panel rounded-2xl border border-red-400/25 p-4 text-sm text-red-200">
+                Could not refresh published events: {clubEventsError}
+              </div>
+            )}
+            {eventRegistrationError && (
+              <div role="alert" className="campus-panel rounded-2xl border border-red-400/25 p-4 text-sm text-red-200">
+                {eventRegistrationError}
+              </div>
+            )}
+            {clubEventsLoading && !clubEventsData.loaded && (
+              <div role="status" className="campus-panel rounded-2xl p-4 text-sm text-white/60">Loading published events…</div>
+            )}
 
             {/* Open Registration */}
             {clubEventsTab === 'open' && (
@@ -1521,7 +1633,7 @@ export default function Home() {
                           <div>👥 {event.registration_count} registered</div>
                         </div>
                         <button
-                          disabled={event.user_registered}
+                          disabled={event.user_registered || registeringEventId === event.id}
                           onClick={() => handleEventRegister(event, () => {
                             setClubEventsData(prev => ({
                               ...prev,
@@ -1531,7 +1643,7 @@ export default function Home() {
                           })}
                           className={`w-full py-2.5 rounded-[1rem] font-medium text-sm transition ${event.user_registered ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 cursor-default' : 'bg-gradient-to-r from-cyan-500 to-purple-500 text-white hover:opacity-90'}`}
                         >
-                          {event.user_registered ? '✓ Registered' : 'Register Now'}
+                          {event.user_registered ? '✓ Registered' : registeringEventId === event.id ? 'Registering…' : 'Register Now'}
                         </button>
                       </div>
                     ))}
@@ -1615,11 +1727,13 @@ export default function Home() {
                             {event.venue && <div>📍 {event.venue}</div>}
                             <div>🏛️ {event.club?.club_name}</div>
                           </div>
+                          {!isCompleted && <EventTicketButton event={event} />}
                         </div>
                       );
                     })}
                   </div>
                 )}
+                {clubEventsTab === 'history' && <EventActivityHistoryPanel />}
               </div>
             )}
           </div>)}

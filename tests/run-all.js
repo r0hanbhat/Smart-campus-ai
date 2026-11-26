@@ -1,8 +1,17 @@
 import './chat-assistant.test.js';
+import './rag.test.js';
 import './attention-utils.test.js';
 import './attendance-utils.test.js';
 import './dashboard-insights.test.js';
 import './issues.test.js';
+import './inbox.test.js';
+import './auth-fetch.test.js';
+import './event-checkin.test.js';
+import './facilities.test.js';
+import './lost-and-found.test.js';
+import './hostel.test.js';
+import './mess.test.js';
+import './outpass.test.js';
 import './planner-utils.test.js';
 import './reminder-jobs.test.js';
 import './reminder-utils.test.js';

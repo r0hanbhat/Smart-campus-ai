@@ -85,7 +85,7 @@ export async function POST(req) {
             ],
             model: imageDataUrl
                 ? 'meta-llama/llama-4-scout-17b-16e-instruct'
-                : 'llama-3.3-70b-versatile',
+                : 'openai/gpt-oss-20b',
             temperature: ragResult.hasContext ? 0.3 : 0.7, // lower temp when grounded
             max_tokens: 1400,
         });
