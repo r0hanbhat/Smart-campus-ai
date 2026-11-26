@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServiceRoleClient, getAuthenticatedUser } from '@/lib/server/supabase';
-import { generateEmbedding } from '@/lib/server/embeddings';
 import { chunkDocument } from '@/lib/server/rag';
 
 // ── Auth guard helper ─────────────────────────────────────────────────────────
@@ -38,7 +37,7 @@ export async function POST(request) {
 
         const serviceClient = createSupabaseServiceRoleClient();
 
-        // ── Bulk mode: split the document text into chunks, embed each ──────────
+        // ── Bulk mode: split the document text into chunks, store all chunks together ──────────
         if (isBulk) {
             const rawText = typeof body.content === 'string' ? body.content.trim() : '';
             if (!rawText) return NextResponse.json({ error: 'content is required for bulk ingest.' }, { status: 400 });
@@ -47,58 +46,12 @@ export async function POST(request) {
             const overlap   = Number(body.overlap)   || 80;
             const textChunks = chunkDocument(rawText, chunkSize, overlap);
 
-            const results = { inserted: 0, failed: 0, errors: [] };
-
-            const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
-            for (let i = 0; i < textChunks.length; i++) {
-                const chunk = textChunks[i];
-
-                // Small delay between HF API calls to avoid free-tier rate limiting
-                if (i > 0) await sleep(600);
-
-                // Retry up to 2 times on embedding failure (HF model may be loading)
-                let embedding = null;
-                for (let attempt = 0; attempt < 3; attempt++) {
-                    embedding = await generateEmbedding(chunk);
-                    if (embedding) break;
-                    if (attempt < 2) {
-                        console.warn(`[Knowledge] Chunk ${i} embed attempt ${attempt + 1} failed, retrying in 2s...`);
-                        await sleep(2000);
-                    }
-                }
-
-                if (!embedding) {
-                    results.failed++;
-                    results.errors.push(`Chunk ${i}: embedding failed after 3 attempts (HuggingFace rate limit or model unavailable)`);
-                    continue;
-                }
-
-                const { error: insertError } = await serviceClient
-                    .from('knowledge_chunks')
-                    .insert({
-                        content: chunk,
-                        embedding,
-                        source,
-                        category,
-                        title,
-                        chunk_index: i,
-                        metadata,
-                    });
-
-                if (insertError) {
-                    results.failed++;
-                    results.errors.push(`Chunk ${i}: DB insert failed — ${insertError.message}`);
-                } else {
-                    results.inserted++;
-                }
-            }
-
-            return NextResponse.json({
-                success: true,
-                totalChunks: textChunks.length,
-                ...results,
-            });
+            const rows = textChunks.map((content, index) => ({
+                content, source, category, title, chunk_index: index, metadata,
+            }));
+            const { error } = await serviceClient.from('knowledge_chunks').insert(rows);
+            if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+            return NextResponse.json({ success: true, totalChunks: rows.length, inserted: rows.length, failed: 0, errors: [] });
         }
 
         // ── Single chunk mode ─────────────────────────────────────────────────
@@ -107,17 +60,9 @@ export async function POST(request) {
 
         if (!content) return NextResponse.json({ error: 'content is required.' }, { status: 400 });
 
-        const embedding = await generateEmbedding(content);
-        if (!embedding) {
-            return NextResponse.json(
-                { error: 'Failed to generate embedding. Check HUGGINGFACE_API_KEY.' },
-                { status: 502 },
-            );
-        }
-
         const { data, error: insertError } = await serviceClient
             .from('knowledge_chunks')
-            .insert({ content, embedding, source, category, title, chunk_index: chunkIndex, metadata })
+            .insert({ content, source, category, title, chunk_index: chunkIndex, metadata })
             .select('id, source, category, title, chunk_index, created_at')
             .single();
 

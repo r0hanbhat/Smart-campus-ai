@@ -27,7 +27,7 @@ export async function POST(request) {
         const query = typeof body?.query === 'string' ? body.query.trim() : '';
         if (!query) return NextResponse.json({ error: 'query is required.' }, { status: 400 });
 
-        const result = await retrieveContext(query, { threshold: 0.35, topK: 8 });
+        const result = await retrieveContext(query, { topK: 8 });
 
         return NextResponse.json({
             query,

@@ -36,6 +36,9 @@ create index if not exists knowledge_chunks_embedding_idx
     using ivfflat (embedding vector_cosine_ops)
     with (lists = 100);
 
+create index if not exists knowledge_chunks_content_search_idx
+    on public.knowledge_chunks using gin (to_tsvector('english', content));
+
 create index if not exists knowledge_chunks_category_idx
     on public.knowledge_chunks (category);
 

@@ -216,7 +216,8 @@ begin
     raise exception 'Duplicate weekly menu entry';
   end if;
 
-  delete from public.hostel_mess_menu;
+  delete from public.hostel_mess_menu
+  where day_of_week between 0 and 6;
 
   insert into public.hostel_mess_menu (day_of_week, meal_type, menu_text, updated_by, updated_at)
   select item.day_of_week, item.meal_type, trim(item.menu_text), target_admin_user_id, timezone('utc', now())

@@ -146,7 +146,7 @@ function AddKnowledgeTab() {
                 <textarea
                     value={form.content}
                     onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
-                    placeholder="Paste the full document text here. It will be automatically split into chunks and embedded."
+                    placeholder="Paste the full document text here. It will be automatically split into chunks and saved."
                     className="campus-input min-h-[14rem] w-full rounded-[1rem] px-4 py-3 font-mono text-sm"
                 />
                 <div className="mt-1 text-right text-xs text-slate-400">
@@ -169,7 +169,7 @@ function AddKnowledgeTab() {
                 disabled={ingesting || !form.title.trim() || !form.content.trim()}
                 className="rounded-[1rem] bg-gradient-to-r from-sky-500 to-emerald-400 px-6 py-3 text-sm font-semibold text-slate-950 disabled:opacity-50"
             >
-                {ingesting ? '⏳ Ingesting & Embedding…' : '🧠 Ingest into Knowledge Base'}
+                {ingesting ? '⏳ Saving chunks…' : '🧠 Ingest into Knowledge Base'}
             </button>
 
             {error && (
@@ -331,7 +331,7 @@ function TestRetrievalTab() {
             {results !== null && (
                 results.length === 0 ? (
                     <div className="rounded-[1rem] border border-dashed border-slate-200 py-8 text-center text-sm text-slate-400">
-                        No matching chunks found. Try a lower similarity threshold or ingest relevant content.
+                        No matching chunks found. Try a keyword from the document or ingest relevant content.
                     </div>
                 ) : (
                     <div className="campus-scroll max-h-[24rem] space-y-3 overflow-y-auto pr-1">
